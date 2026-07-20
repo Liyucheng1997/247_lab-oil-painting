@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欧洲油画工坊 · Atelier</title>
+<style>
+  :root{
+    --bg:#2b2620;
+    --panel:#3a332a;
+    --panel-light:#4a4136;
+    --gold:#c9a227;
+    --gold-light:#e8c96a;
+    --cream:#f2e8d5;
+    --text:#e8dfd0;
+    --text-dim:#a89a85;
+    --accent:#8b3a2f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:"Georgia","Noto Serif SC","STSong","SimSun",serif;
+    background:var(--bg);
+    color:var(--text);
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  header{
+    background:linear-gradient(180deg,#1e1a15,#2b2620);
+    border-bottom:2px solid var(--gold);
+    padding:10px 24px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-shrink:0;
+  }
+  header h1{
+    font-size:22px;
+    color:var(--gold-light);
+    letter-spacing:2px;
+    font-weight:normal;
+  }
+  header .subtitle{
+    color:var(--text-dim);
+    font-size:13px;
+    font-style:italic;
+  }
+  header .tabs{margin-left:auto;display:flex;gap:8px;}
+  .tab-btn{
+    background:transparent;
+    border:1px solid var(--panel-light);
+    color:var(--text-dim);
+    padding:6px 16px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:14px;
+    border-radius:3px;
+    transition:all .2s;
+  }
+  .tab-btn:hover{border-color:var(--gold);color:var(--gold-light);}
+  .tab-btn.active{
+    background:var(--gold);
+    color:#1e1a15;
+    border-color:var(--gold);
+  }
+  main{flex:1;display:flex;overflow:hidden;}
+
+  /* ============ 画室 ============ */
+  #studio{display:flex;flex:1;overflow:hidden;}
+  #toolbar{
+    width:230px;
+    background:var(--panel);
+    border-right:1px solid #1e1a15;
+    padding:14px;
+    overflow-y:auto;
+    flex-shrink:0;
+  }
+  .tool-section{margin-bottom:18px;}
+  .tool-section h3{
+    font-size:12px;
+    color:var(--gold);
+    letter-spacing:1px;
+    margin-bottom:8px;
+    border-bottom:1px solid var(--panel-light);
+    padding-bottom:4px;
+  }
+  .brush-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .brush-btn{
+    background:var(--panel-light);
+    border:1px solid transparent;
+    color:var(--text);
+    padding:8px 4px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:12px;
+    border-radius:3px;
+    text-align:center;
+    transition:all .15s;
+  }
+  .brush-btn:hover{border-color:var(--gold);}
+  .brush-btn.active{background:var(--gold);color:#1e1a15;font-weight:bold;}
+  .brush-btn .icon{display:block;font-size:16px;margin-bottom:2px;}
+  label.slider-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    color:var(--text-dim);
+    margin:8px 0 2px;
+  }
+  input[type=range]{
+    width:100%;
+    accent-color:var(--gold);
+  }
+  .palette{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:5px;
+  }
+  .swatch{
+    aspect-ratio:1;
+    border-radius:50%;
+    cursor:pointer;
+    border:2px solid rgba(0,0,0,.4);
+    transition:transform .1s;
+    position:relative;
+  }
+  .swatch:hover{transform:scale(1.15);}
+  .swatch.active{border-color:var(--gold-light);box-shadow:0 0 6px var(--gold);}
+  .swatch .tip{
+    display:none;
+    position:absolute;
+    bottom:calc(100% + 6px);
+    left:50%;
+    transform:translateX(-50%);
+    background:#1e1a15;
+    color:var(--cream);
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:3px;
+    white-space:nowrap;
+    z-index:20;
+    border:1px solid var(--gold);
+  }
+  .swatch:hover .tip{display:block;}
+  #currentColorBox{
+    height:34px;
+    border-radius:4px;
+    border:2px solid var(--panel-light);
+    margin-top:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+    color:#fff;
+  }
+  input[type=color]{
+    width:100%;
+    height:28px;
+    border:none;
+    background:var(--panel-light);
+    cursor:pointer;
+    margin-top:6px;
+    border-radius:3px;
+  }
+  .action-btns{display:flex;flex-direction:column;gap:6px;}
+  .action-btn{
+    background:var(--panel-light);
+    border:1px solid var(--panel-light);
+    color:var(--text);
+    padding:8px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:13px;
+    border-radius:3px;
+  }
+  .action-btn:hover{border-color:var(--gold);color:var(--gold-light);}
+  .action-btn.danger:hover{border-color:var(--accent);color:#e0876f;}
+
+  #canvasArea{
+    flex:1;
+    display:flex;
+    background:
+      radial-gradient(ellipse at 50% 30%, #4a4136 0%, #2b2620 75%);
+    position:relative;
+    overflow:auto;
+    padding:24px;
+  }
+  #canvasArea.panning{cursor:grab;}
+  #canvasArea.panning:active{cursor:grabbing;}
+  #canvasArea.panning #paintCanvas{pointer-events:none;}
+  #easel{
+    margin:auto; /* 居中且溢出时四边都可滚动到 */
+    position:relative;
+    box-shadow:0 12px 40px rgba(0,0,0,.65);
+    border:14px solid #5c4327;
+    border-image:linear-gradient(135deg,#7a5c35,#4a341d,#8a683e,#3d2b17) 1;
+    background:#fff;
+  }
+  #paintCanvas{display:block;cursor:crosshair;touch-action:none;}
+  #hintBar{
+    position:absolute;
+    bottom:8px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(30,26,21,.85);
+    color:var(--text-dim);
+    font-size:12px;
+    padding:5px 14px;
+    border-radius:14px;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+
+  /* ============ 学堂 ============ */
+  #academy{
+    display:none;
+    flex:1;
+    overflow-y:auto;
+    padding:30px 40px 60px;
+    scroll-behavior:smooth;
+  }
+  #academy.visible{display:block;}
+  #studio.hidden{display:none;}
+  .academy-inner{max-width:900px;margin:0 auto;}
+  .academy-nav{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:26px;
+    position:sticky;
+    top:0;
+    background:var(--bg);
+    padding:10px 0;
+    z-index:10;
+    border-bottom:1px solid var(--panel-light);
+  }
+  .academy-nav a{
+    color:var(--gold-light);
+    text-decoration:none;
+    font-size:13px;
+    padding:5px 12px;
+    border:1px solid var(--panel-light);
+    border-radius:14px;
+  }
+  .academy-nav a:hover{background:var(--panel-light);}
+  #academy h2{
+    color:var(--gold-light);
+    font-size:26px;
+    margin:36px 0 6px;
+    font-weight:normal;
+    letter-spacing:1px;
+  }
+  #academy h2 .en{font-size:14px;color:var(--text-dim);font-style:italic;margin-left:10px;}
+  #academy .rule{
+    height:2px;
+    background:linear-gradient(90deg,var(--gold),transparent);
+    margin-bottom:18px;
+  }
+  #academy h3{
+    color:var(--cream);
+    font-size:18px;
+    margin:22px 0 8px;
+    font-weight:normal;
+  }
+  #academy p{
+    line-height:1.9;
+    color:var(--text);
+    margin-bottom:10px;
+    font-size:15px;
+  }
+  #academy .dim{color:var(--text-dim);font-size:13px;font-style:italic;}
+  .step-card{
+    background:var(--panel);
+    border-left:3px solid var(--gold);
+    border-radius:0 6px 6px 0;
+    padding:16px 20px;
+    margin:14px 0;
+  }
+  .step-card .step-num{
+    display:inline-block;
+    background:var(--gold);
+    color:#1e1a15;
+    width:26px;height:26px;
+    border-radius:50%;
+    text-align:center;
+    line-height:26px;
+    font-weight:bold;
+    margin-right:10px;
+    font-size:14px;
+  }
+  .step-card h4{
+    display:inline;
+    color:var(--gold-light);
+    font-size:16px;
+    font-weight:normal;
+  }
+  .step-card p{margin-top:8px;}
+  .technique-card{
+    background:var(--panel);
+    border:1px solid var(--panel-light);
+    border-radius:6px;
+    padding:20px 24px;
+    margin:16px 0;
+  }
+  .technique-card h3{
+    margin-top:0 !important;
+    color:var(--gold-light) !important;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .technique-card .era{
+    font-size:12px;
+    color:var(--text-dim);
+    background:var(--panel-light);
+    padding:2px 10px;
+    border-radius:10px;
+  }
+  .technique-card ul{margin:8px 0 4px 22px;line-height:1.9;font-size:14px;}
+  .masters{
+    color:var(--gold);
+    font-size:13px;
+    margin-top:10px;
+  }
+  table.supply-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:12px 0;
+    font-size:14px;
+  }
+  table.supply-table th,table.supply-table td{
+    border:1px solid var(--panel-light);
+    padding:8px 12px;
+    text-align:left;
+  }
+  table.supply-table th{background:var(--panel);color:var(--gold-light);font-weight:normal;}
+  table.supply-table td{color:var(--text);line-height:1.6;}
+  .tip-box{
+    background:rgba(139,58,47,.15);
+    border:1px solid var(--accent);
+    border-radius:6px;
+    padding:12px 18px;
+    margin:14px 0;
+    font-size:14px;
+    line-height:1.8;
+  }
+  .tip-box strong{color:#e0876f;}
+  .quote{
+    text-align:center;
+    font-style:italic;
+    color:var(--text-dim);
+    margin:30px 0;
+    font-size:15px;
+  }
+
+  /* ============ 拆解临摹 ============ */
+  #decompose{display:none;flex:1;overflow:hidden;}
+  #decompose.visible{display:flex;}
+  #decoSide{
+    width:270px;
+    background:var(--panel);
+    border-right:1px solid #1e1a15;
+    padding:14px;
+    overflow-y:auto;
+    flex-shrink:0;
+  }
+  #dropZone{
+    border:2px dashed var(--panel-light);
+    border-radius:6px;
+    padding:18px 10px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13px;
+    cursor:pointer;
+    transition:all .2s;
+    line-height:1.8;
+  }
+  #dropZone:hover,#dropZone.dragover{border-color:var(--gold);color:var(--gold-light);}
+  .step-item{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    background:var(--panel-light);
+    border:1px solid transparent;
+    border-radius:4px;
+    padding:6px;
+    cursor:pointer;
+    margin-bottom:6px;
+  }
+  .step-item:hover{border-color:var(--gold);}
+  .step-item.active{border-color:var(--gold);background:#5a5040;}
+  .step-item img{width:56px;height:42px;object-fit:cover;border-radius:2px;background:#222;flex-shrink:0;}
+  .step-item .si-name{font-size:13px;color:var(--text);}
+  .step-item .si-sub{font-size:11px;color:var(--text-dim);}
+  #decoMain{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  #decoViewerWrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:auto;
+    padding:20px;
+    background:radial-gradient(ellipse at 50% 30%, #4a4136 0%, #2b2620 75%);
+  }
+  #decoViewer{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    border:8px solid #5c4327;
+    display:none;
+  }
+  #decoEmpty{color:var(--text-dim);font-style:italic;text-align:center;line-height:2.2;font-size:15px;}
+  #decoBar{
+    background:var(--panel);
+    border-top:1px solid #1e1a15;
+    padding:12px 20px;
+    display:none;
+    gap:14px;
+    align-items:center;
+  }
+  #decoBar.visible{display:flex;}
+  #decoBar .desc{flex:1;font-size:13px;color:var(--text);line-height:1.6;}
+  #decoBar .desc b{color:var(--gold-light);}
+  .deco-palette{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .deco-palette .swatch{width:28px;height:28px;aspect-ratio:auto;border-radius:4px;}
+  #traceOverlay{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    opacity:.4;
+    display:none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>欧洲油画工坊</h1>
+  <span class="subtitle">Atelier — 在这里成为你自己的达·芬奇</span>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabStudio">🎨 画室</button>
+    <button class="tab-btn" id="tabDecompose">🖼 拆解临摹</button>
+    <button class="tab-btn" id="tabAcademy">📜 学堂</button>
+  </div>
+</header>
+
+<main>
+  <!-- ==================== 画室 ==================== -->
+  <div id="studio">
+    <div id="toolbar">
+      <div class="tool-section">
+        <h3>画 笔 · BRUSHES</h3>
+        <div class="brush-grid">
+          <button class="brush-btn active" data-brush="round"><span class="icon">🖌️</span>圆头笔</button>
+          <button class="brush-btn" data-brush="flat"><span class="icon">▬</span>平头笔</button>
+          <button class="brush-btn" data-brush="fan"><span class="icon">🪶</span>扇形笔</button>
+          <button class="brush-btn" data-brush="knife"><span class="icon">🔪</span>画刀厚涂</button>
+          <button class="brush-btn" data-brush="glaze"><span class="icon">💧</span>罩染薄涂</button>
+          <button class="brush-btn" data-brush="blend"><span class="icon">🌫️</span>调和笔</button>
+        </div>
+        <label class="slider-label"><span>笔刷大小</span><span id="sizeVal">18</span></label>
+        <input type="range" id="brushSize" min="2" max="80" value="18">
+        <label class="slider-label"><span>颜料浓度</span><span id="opacityVal">80%</span></label>
+        <input type="range" id="brushOpacity" min="5" max="100" value="80">
+      </div>
+
+      <div class="tool-section">
+        <h3>调色盘 · 大师颜料</h3>
+        <div class="palette" id="palette"></div>
+        <div id="currentColorBox">当前颜色</div>
+        <input type="color" id="customColor" value="#8b3a2f" title="自定义调色">
+      </div>
+
+      <div class="tool-section" id="traceSection" style="display:none;">
+        <h3>临 摹 · TRACE</h3>
+        <label class="slider-label"><span>参考图透明度</span><span id="traceVal">40%</span></label>
+        <input type="range" id="traceOpacity" min="0" max="100" value="40">
+        <div class="action-btns">
+          <button class="action-btn" id="btnTraceToggle">👁 显示 / 隐藏参考图</button>
+          <button class="action-btn danger" id="btnTraceRemove">✖ 移除参考图</button>
+        </div>
+      </div>
+
+      <div class="tool-section">
+        <h3>缩 放 · ZOOM</h3>
+        <label class="slider-label"><span>画布缩放</span><span id="zoomVal">100%</span></label>
+        <input type="range" id="zoomSlider" min="25" max="400" value="100">
+        <div class="brush-grid" style="margin-top:6px;">
+          <button class="action-btn" id="btnZoomOut">－ 缩小</button>
+          <button class="action-btn" id="btnZoomIn">＋ 放大</button>
+          <button class="action-btn" id="btnZoomFit" style="grid-column:1/-1;">⤢ 适应窗口 (100%)</button>
+        </div>
+        <p style="font-size:11px;line-height:1.7;color:var(--text-dim);margin-top:6px;">
+          Ctrl + 滚轮：以鼠标为中心缩放<br>
+          按住空格 + 拖动：平移画布
+        </p>
+      </div>
+
+      <div class="tool-section">
+        <h3>画 布 · CANVAS</h3>
+        <div class="action-btns">
+          <button class="action-btn" id="btnUndo">↩ 撤销一笔</button>
+          <button class="action-btn" id="btnTone">🟤 铺有色底（古典底色）</button>
+          <button class="action-btn" id="btnSave">💾 保存作品 (PNG)</button>
+          <button class="action-btn danger" id="btnClear">🗑 清空画布</button>
+        </div>
+      </div>
+
+      <div class="tool-section">
+        <h3>小白提示</h3>
+        <p style="font-size:12px;line-height:1.8;color:var(--text-dim);">
+          先点「铺有色底」，像伦勃朗一样从棕色底开始；<br>
+          用<b style="color:var(--gold-light)">圆头笔</b>低浓度起稿，<br>
+          用<b style="color:var(--gold-light)">平头笔</b>铺大色块，<br>
+          用<b style="color:var(--gold-light)">调和笔</b>柔化边缘（达·芬奇的晕涂法 sfumato），<br>
+          最后用<b style="color:var(--gold-light)">画刀</b>点高光。
+        </p>
+      </div>
+    </div>
+
+    <div id="canvasArea">
+      <div id="easel">
+        <canvas id="paintCanvas" width="880" height="620"></canvas>
+        <img id="traceOverlay" alt="">
+      </div>
+      <div id="hintBar">🖱️ 拖动作画 · Ctrl+滚轮缩放 · 空格+拖动平移 · 调和笔可揉合颜色</div>
+    </div>
+  </div>
+
+  <!-- ==================== 拆解临摹 ==================== -->
+  <div id="decompose">
+    <div id="decoSide">
+      <div class="tool-section">
+        <h3>上传画作 · UPLOAD</h3>
+        <div id="dropZone">📤 点击或拖入一张油画图片<br>
+          <span style="font-size:11px;">全程在你的浏览器里处理<br>不会上传到任何服务器</span>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="tool-section" id="stepsSection" style="display:none;">
+        <h3>作画步骤 · STEPS</h3>
+        <div id="stepsList"></div>
+      </div>
+      <div class="tool-section" id="paletteSection" style="display:none;">
+        <h3>画中调色盘 · PALETTE</h3>
+        <p style="font-size:11px;color:var(--text-dim);">从画中提取的主色，按占比排序。<br>点击色块可直接设为画笔颜色。</p>
+        <div class="deco-palette" id="decoPalette"></div>
+        <div id="pigmentHint" style="font-size:12px;color:var(--gold-light);margin-top:8px;min-height:1.5em;"></div>
+      </div>
+    </div>
+    <div id="decoMain">
+      <div id="decoViewerWrap">
+        <div id="decoEmpty">🖼<br>上传一张你喜欢的油画<br>我会把它拆解成可以照着画的七个步骤<br><span style="font-size:12px;">（名画、照片、你自己的习作都可以）</span></div>
+        <img id="decoViewer" alt="步骤图">
+      </div>
+      <div id="decoBar">
+        <div class="desc" id="decoDesc"></div>
+        <button class="action-btn" id="btnTrace">🎨 垫入画室临摹</button>
+        <button class="action-btn" id="btnStepSave">💾 下载此图</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 学堂 ==================== -->
+  <div id="academy">
+    <div class="academy-inner">
+      <div class="academy-nav">
+        <a href="#sec-intro">🏛 油画是什么</a>
+        <a href="#sec-supplies">🧰 装备清单</a>
+        <a href="#sec-steps">👣 七步作画法</a>
+        <a href="#sec-techniques">🎭 技法百科</a>
+        <a href="#sec-color">🌈 调色入门</a>
+        <a href="#sec-davinci">🧠 达·芬奇之路</a>
+      </div>
+
+      <h2 id="sec-intro">油画是什么<span class="en">A Brief History</span></h2>
+      <div class="rule"></div>
+      <p>油画（Oil Painting）是用<b>干性油</b>（最常见的是亚麻仁油）调和颜料粉作画的画种。颜料干得慢，所以你有大把时间在画布上慢慢混色、修改、反悔——这正是它对新手最友好的一点。</p>
+      <p>在油画普及之前，欧洲画家主要用<b>蛋彩（Tempera，坦培拉）</b>：拿鸡蛋黄调颜料，干得飞快，画错基本没法改。15世纪初，尼德兰画家<b>扬·凡·艾克（Jan van Eyck）</b>把油性媒介的技术推向成熟，油画从此席卷欧洲——文艺复兴、巴洛克、印象派……一路画到今天。</p>
+      <p class="dim">达·芬奇的《蒙娜丽莎》就是画在杨木板上的油画，前后画了十几年。所以别着急，慢就是油画的天性。</p>
+
+      <h2 id="sec-supplies">装备清单<span class="en">Supplies for Beginners</span></h2>
+      <div class="rule"></div>
+      <table class="supply-table">
+        <tr><th>类别</th><th>新手怎么买</th><th>说明</th></tr>
+        <tr><td>颜料</td><td>入门级12色套装即可</td><td>必备色：钛白、柠檬黄、土黄、镉红（或大红）、深红、群青、酞菁蓝、翠绿、熟褐、象牙黑。白色用得最多，多备一支。</td></tr>
+        <tr><td>画笔</td><td>猪鬃毛笔 4~6 支</td><td>圆头（起稿勾线）、平头（铺色块）、扇形（柔化/画草木）各来两个型号。再备一支软毛笔做罩染。</td></tr>
+        <tr><td>画刀</td><td>1~2 把</td><td>调色必备，也能直接上画布做厚涂肌理。</td></tr>
+        <tr><td>画布</td><td>油画布框或油画纸</td><td>新手用油画纸练习最省钱；正式作品用布框。</td></tr>
+        <tr><td>调色板</td><td>木质或一次性撕纸调色板</td><td>懒人强烈推荐撕纸款，画完撕一页扔掉。</td></tr>
+        <tr><td>媒介剂</td><td>亚麻仁油 + 松节油（或无味稀释剂）</td><td>松节油稀释颜料（前期），亚麻仁油让颜料肥润（后期）。记住口诀：<b>肥盖瘦</b>。</td></tr>
+        <tr><td>其他</td><td>洗笔液、抹布/纸巾、围裙</td><td>油画颜料沾衣服上很难洗，围裙不是玄学。</td></tr>
+      </table>
+      <div class="tip-box"><strong>省钱方案：</strong>如果只想先试试手感，一套学生级颜料 + 油画纸 + 三支笔 + 撕纸调色板，百元内可以开画。别一上来买大师级颜料，画技比颜料贵重要得多。</div>
+
+      <h2 id="sec-steps">七步作画法<span class="en">The Classical Seven Steps</span></h2>
+      <div class="rule"></div>
+      <p>这是欧洲画室（Atelier）传统教学的标准流程，从提香到伦勃朗大体都这么画。照着走，你的第一张画就不会乱。</p>
+
+      <div class="step-card"><span class="step-num">1</span><h4>构思与小稿 Sketch</h4>
+        <p>决定画什么、画多大。先在纸上画几个巴掌大的小构图（thumbnail），确定主体放哪、光从哪来。新手建议：单个物体 + 单一光源，比如一颗苹果、一个陶罐。</p></div>
+
+      <div class="step-card"><span class="step-num">2</span><h4>铺有色底 Toned Ground</h4>
+        <p>用稀释的土黄或熟褐把整张白画布刷一层淡淡的底色。白画布会骗你的眼睛，中间调的底色让你更容易判断明暗。伦勃朗的深棕底、委拉斯开兹的红棕底都是这个道理。</p></div>
+
+      <div class="step-card"><span class="step-num">3</span><h4>起形 Drawing In</h4>
+        <p>用小圆头笔蘸稀薄的熟褐勾出物体轮廓和大的明暗分界线。画错了拿抹布一擦就掉——这就是油画的仁慈之处。</p></div>
+
+      <div class="step-card"><span class="step-num">4</span><h4>铺大色块 Blocking In</h4>
+        <p>眯起眼睛看对象，忽略细节，用大平头笔把暗部、中间调、亮部三大块颜色铺满。这一步的口诀是：<b>宁可画大块，不要抠细节</b>。整张画布都要盖到颜色。</p></div>
+
+      <div class="step-card"><span class="step-num">5</span><h4>塑造 Modeling</h4>
+        <p>在大色块基础上细分层次：暗部里找反光，亮部里找过渡。用调和笔（干净的软毛笔）轻扫明暗交界，让转折变得柔和——这就是达·芬奇著名的<b>晕涂法 sfumato</b>，"像烟雾一样没有边界"。</p></div>
+
+      <div class="step-card"><span class="step-num">6</span><h4>细节与高光 Details &amp; Highlights</h4>
+        <p>最后阶段才画细节：边缘的取舍、纹理、最亮的那一两个高光点。高光要用厚颜料"点"上去（可以用画刀），厚的亮部 + 薄的暗部是古典油画的立体秘诀。</p></div>
+
+      <div class="step-card"><span class="step-num">7</span><h4>罩染与完成 Glazing &amp; Varnish</h4>
+        <p>等画面干透后，可以用极稀薄的透明颜料罩染统一色调（比如给暗部罩一层暖棕）。完全干燥（几个月后）再上光油保护。签上你的名字——恭喜，你的第一件"文艺复兴"作品诞生了。</p></div>
+
+      <div class="tip-box"><strong>最重要的三条军规：</strong><br>
+        ① <b>肥盖瘦</b>（Fat over Lean）：越往后画，颜料里油越多。反过来画面日后会开裂。<br>
+        ② <b>厚盖薄</b>：厚颜料画在薄颜料上面，别反着来。<br>
+        ③ <b>慢干是朋友</b>：画错了刮掉重来就行，油画没有"手滑毁一生"。</div>
+
+      <h2 id="sec-techniques">技法百科<span class="en">Techniques Through the Ages</span></h2>
+      <div class="rule"></div>
+
+      <div class="technique-card">
+        <h3>蛋彩画 / 坦培拉 <span class="era">中世纪 ~ 15世纪 · 油画的前身</span></h3>
+        <p>用<b>蛋黄</b>（有时加少量水和油）调和颜料粉。干燥极快、色彩清亮、几百年不变色，但无法在画面上混色，全靠无数细小的排线一层层叠出过渡。</p>
+        <ul>
+          <li>特点：线条感强、色彩明快、亚光效果、需要在木板上打石膏底（Gesso）</li>
+          <li>难点：落笔即干，必须"想好再画"，和油画的松弛感截然相反</li>
+          <li>现代玩法：很多画家先用坦培拉画底层，再用油画罩染，兼得两者之长（混合技法）</li>
+        </ul>
+        <p class="masters">代表大师：波提切利《维纳斯的诞生》、弗拉·安杰利科、早期的达·芬奇工坊</p>
+      </div>
+
+      <div class="technique-card">
+        <h3>古典多层罩染法 <span class="era">15~17世纪 · 弗拉芒/意大利传统</span></h3>
+        <p>油画黄金时代的正统画法：先用单色（棕或灰）画出完整的素描关系（称为<b>底层画 Underpainting</b>，灰色的叫 Grisaille），干后用透明颜料一层层<b>罩染</b>上色。光线穿透颜料层再反射出来，产生宝石般的深邃光泽。</p>
+        <ul>
+          <li>特点：色彩层次极深、暗部透明发光、画面如珐琅般光洁</li>
+          <li>流程：有色底 → 素描底层 → 提白塑形 → 多次罩染 → 厚涂高光</li>
+          <li>缺点：周期长，每层都要等干，一张画数月起步</li>
+        </ul>
+        <p class="masters">代表大师：凡·艾克《阿尔诺芬尼夫妇像》、提香、伦勃朗（暗部罩染 + 亮部厚涂的教科书）</p>
+      </div>
+
+      <div class="technique-card">
+        <h3>晕涂法 Sfumato <span class="era">文艺复兴盛期 · 达·芬奇的招牌</span></h3>
+        <p>意大利语"烟雾"之意。用极多层近乎透明的薄涂，让明暗之间<b>找不到任何硬边界</b>，像隔着一层烟看世界。《蒙娜丽莎》嘴角那抹似笑非笑，就是几十层微妙罩染的产物。</p>
+        <ul>
+          <li>练习方法：画一个球体，用干净软毛笔反复轻扫明暗交界处，直到看不出笔触</li>
+          <li>在本工坊的画室里，选「调和笔」就可以体验数字版 sfumato</li>
+        </ul>
+        <p class="masters">代表大师：达·芬奇《蒙娜丽莎》《施洗者圣约翰》、乔尔乔内</p>
+      </div>
+
+      <div class="technique-card">
+        <h3>直接画法 Alla Prima <span class="era">19世纪至今 · 现代主流</span></h3>
+        <p>意大利语"一次完成"。不做多层罩染，趁颜料未干直接在画布上调色、覆盖、完成（也叫<b>湿盖湿 wet-on-wet</b>）。印象派画家扛着颜料管去户外写生，追赶转瞬即逝的光线，把这种画法推向巅峰。</p>
+        <ul>
+          <li>特点：笔触鲜活、色彩生动、一天甚至一小时完成一张</li>
+          <li>最适合新手起步：反馈快、成就感强、失败成本低</li>
+          <li>关键功夫在调色：颜色要在调色板上基本调准，上画布后少揉</li>
+        </ul>
+        <p class="masters">代表大师：莫奈、萨金特、索罗亚；先驱可追溯到弗兰斯·哈尔斯和委拉斯开兹</p>
+      </div>
+
+      <div class="technique-card">
+        <h3>厚涂法 Impasto <span class="era">17世纪萌芽 · 后印象派发扬</span></h3>
+        <p>把颜料像奶油一样厚厚地堆上画布，笔触和刀痕本身成为画面的一部分，在侧光下产生真实的立体起伏。梵高的星空、向日葵，就是用颜料"雕"出来的。</p>
+        <ul>
+          <li>工具：画刀、硬猪鬃笔，或直接从颜料管挤上画布</li>
+          <li>经典用法：暗部薄涂平静、亮部厚涂隆起（伦勃朗的金盔甲）</li>
+          <li>在画室里选「画刀厚涂」笔刷可以模拟这种堆叠感</li>
+        </ul>
+        <p class="masters">代表大师：伦勃朗晚期、梵高、弗洛伊德、当代的安塞姆·基弗</p>
+      </div>
+
+      <div class="technique-card">
+        <h3>其他值得认识的画法 <span class="era">拓展视野</span></h3>
+        <ul>
+          <li><b>明暗对照法 Chiaroscuro / Tenebrism</b>：卡拉瓦乔式的强烈黑暗+一束强光，戏剧感拉满</li>
+          <li><b>点彩法 Pointillism</b>：修拉用无数纯色小点让观众的眼睛自己"调色"</li>
+          <li><b>分色笔触 Broken Color</b>：印象派不调匀颜色，让笔触并置产生闪烁感</li>
+          <li><b>干扫法 Scumbling</b>：用干笔蘸少量浅色轻扫深色底，产生朦胧雾感（透纳的天空）</li>
+          <li><b>刮除法 Sgraffito</b>：用刀背刮掉湿颜料露出底层，画发丝、草叶一绝</li>
+          <li><b>现代水溶性油画</b>：可用水清洗稀释的新型油画颜料，无溶剂气味，公寓党福音</li>
+        </ul>
+      </div>
+
+      <h2 id="sec-color">调色入门<span class="en">Color Mixing 101</span></h2>
+      <div class="rule"></div>
+      <p><b>三原色</b>（红、黄、蓝）理论上能调出一切，但实际作画记住这几条更实用：</p>
+      <div class="step-card"><span class="step-num">☀</span><h4>变亮不只加白</h4><p>加白会让颜色变"粉"。想让黄色亮，可以加柠檬黄；想让暗部有生气，用透明色罩染而不是加黑。</p></div>
+      <div class="step-card"><span class="step-num">🌑</span><h4>变暗不只加黑</h4><p>加黑容易变"脏"。红色想变暗加深红或翠绿（互补色相混变灰变暗），蓝色想变暗加熟褐。很多大师的调色盘上根本没有黑色。</p></div>
+      <div class="step-card"><span class="step-num">🎯</span><h4>互补色是灰调之王</h4><p>红+绿、黄+紫、蓝+橙，互补色相混得到高级的灰色。画阴影时往固有色里加一点互补色，比加黑高级一百倍。</p></div>
+      <div class="step-card"><span class="step-num">👁</span><h4>肤色没有公式</h4><p>经典起点：白 + 土黄 + 一点红 + 极少的蓝（或绿）压灰。亮部偏黄、暗部偏红、反光偏冷，观察比配方重要。</p></div>
+
+      <h2 id="sec-davinci">达·芬奇之路<span class="en">Becoming a Renaissance Soul</span></h2>
+      <div class="rule"></div>
+      <p>达·芬奇14岁进入韦罗基奥的工坊，从磨颜料、打杂开始，画了六年才被允许在老师的画上添一个天使。你不需要六年，但需要一份修炼路线：</p>
+      <div class="step-card"><span class="step-num">1</span><h4>第 1 个月：单色练习</h4><p>只用熟褐+白，画球体、鸡蛋、陶罐。把明暗五调子（高光、亮部、明暗交界线、反光、投影）画明白，胜过乱画十张彩色。</p></div>
+      <div class="step-card"><span class="step-num">2</span><h4>第 2~3 个月：限色静物</h4><p>用"祖尼色板"（土黄、红、黑、白四色，古希腊传下来的组合）画静物。颜色少，反而学得快。</p></div>
+      <div class="step-card"><span class="step-num">3</span><h4>第 4~6 个月：临摹大师</h4><p>挑一张你爱的画临摹——临摹不可耻，是欧洲美术学院五百年来的核心课。推荐从夏尔丹的静物或柯罗的风景入手，别一上来就挑战《蒙娜丽莎》。</p></div>
+      <div class="step-card"><span class="step-num">4</span><h4>之后：写生 + 创作 + 发布</h4><p>每周一张小画，画完拍照发到网上。达·芬奇如果活在今天，他一定是个高产的博主——保持好奇、跨界折腾、把过程展示给世界，这才是"文艺复兴人"的本质。</p></div>
+      <p class="quote">"Obstacles cannot crush me. Every obstacle yields to stern resolve." —— Leonardo da Vinci</p>
+      <p class="quote">障碍不能把我压垮，每一个障碍都会向坚定的决心让步。—— 达·芬奇</p>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ==================== 大师调色盘 ==================== */
+const MASTER_COLORS = [
+  ["钛白 Titanium White","#f4f0e6"],
+  ["那不勒斯黄 Naples Yellow","#e8c96a"],
+  ["土黄 Yellow Ochre","#c8912e"],
+  ["镉橙 Cadmium Orange","#d96c2a"],
+  ["朱砂红 Vermilion","#c4392b"],
+  ["深茜红 Alizarin Crimson","#7c1f28"],
+  ["熟赭 Burnt Sienna","#8a4a26"],
+  ["熟褐 Burnt Umber","#4e3320"],
+  ["生褐 Raw Umber","#5a4a30"],
+  ["凡·戴克棕 Van Dyke Brown","#3a2a1a"],
+  ["翠绿 Viridian","#1f6a4e"],
+  ["橄榄绿 Olive Green","#5e6230"],
+  ["群青 Ultramarine","#2a3f8f"],
+  ["普鲁士蓝 Prussian Blue","#1a2a44"],
+  ["酞菁蓝 Phthalo Blue","#175a8a"],
+  ["紫罗兰 Violet","#5a3a6e"],
+  ["佩恩灰 Payne's Grey","#3d4450"],
+  ["象牙黑 Ivory Black","#211d1a"],
+];
+
+const palette = document.getElementById("palette");
+let currentColor = "#8a4a26";
+MASTER_COLORS.forEach(([name,hex])=>{
+  const sw = document.createElement("div");
+  sw.className = "swatch";
+  sw.style.background = hex;
+  sw.innerHTML = `<span class="tip">${name}</span>`;
+  sw.addEventListener("click",()=>{
+    currentColor = hex;
+    document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("active"));
+    sw.classList.add("active");
+    updateColorBox();
+  });
+  palette.appendChild(sw);
+});
+const colorBox = document.getElementById("currentColorBox");
+function updateColorBox(){
+  colorBox.style.background = currentColor;
+  colorBox.textContent = currentColor;
+}
+updateColorBox();
+document.getElementById("customColor").addEventListener("input",e=>{
+  currentColor = e.target.value;
+  document.querySelectorAll(".swatch").forEach(s=>s.classList.remove("active"));
+  updateColorBox();
+});
+
+/* ==================== 画布与笔刷引擎 ==================== */
+const canvas = document.getElementById("paintCanvas");
+const ctx = canvas.getContext("2d", { willReadFrequently:true });
+ctx.fillStyle = "#f6f2e8";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+drawCanvasTexture();
+
+function drawCanvasTexture(){
+  // 模拟画布纹理：细密的经纬线
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  ctx.strokeStyle = "#8a7a60";
+  ctx.lineWidth = 1;
+  for(let y=0;y<canvas.height;y+=3){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+  }
+  for(let x=0;x<canvas.width;x+=3){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+let brushType = "round";
+let brushSize = 18;
+let brushOpacity = 0.8;
+let painting = false;
+let lastX=0, lastY=0;
+let bristles = [];
+const undoStack = [];
+const UNDO_LIMIT = 25;
+
+document.querySelectorAll(".brush-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".brush-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    brushType = btn.dataset.brush;
+  });
+});
+document.getElementById("brushSize").addEventListener("input",e=>{
+  brushSize = +e.target.value;
+  document.getElementById("sizeVal").textContent = brushSize;
+});
+document.getElementById("brushOpacity").addEventListener("input",e=>{
+  brushOpacity = +e.target.value/100;
+  document.getElementById("opacityVal").textContent = e.target.value+"%";
+});
+
+function hexToRgb(hex){
+  const n = parseInt(hex.slice(1),16);
+  return [n>>16&255, n>>8&255, n&255];
+}
+function rgbStr(rgb,a){ return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`; }
+// 颜色抖动：让每根笔毛的颜色略有差异，模拟真实颜料
+function jitterColor(rgb, amt){
+  return rgb.map(c=>Math.max(0,Math.min(255, c + (Math.random()-0.5)*amt)));
+}
+// 取画布上某点颜色（用于调和笔和颜料沾染）
+function sampleColor(x,y){
+  x = Math.max(0,Math.min(canvas.width-1, x|0));
+  y = Math.max(0,Math.min(canvas.height-1, y|0));
+  const d = ctx.getImageData(x,y,1,1).data;
+  return [d[0],d[1],d[2]];
+}
+function mixRgb(a,b,t){
+  return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+}
+
+function initBristles(){
+  // 生成笔毛：每根有自己的偏移、粗细、颜色抖动和"载墨量"
+  const count = brushType==="knife" ? 1 :
+                brushType==="glaze" ? 1 :
+                Math.max(6, Math.round(brushSize*0.7));
+  const base = hexToRgb(currentColor);
+  bristles = [];
+  for(let i=0;i<count;i++){
+    const angle = Math.random()*Math.PI*2;
+    const dist = (brushType==="fan")
+      ? (i/count - 0.5) * brushSize * 1.6
+      : Math.sqrt(Math.random()) * brushSize/2;
+    bristles.push({
+      ox: brushType==="fan" ? dist : Math.cos(angle)*dist,
+      oy: brushType==="fan" ? (Math.random()-0.5)*3 : Math.sin(angle)*dist,
+      w: 0.6 + Math.random()*1.8,
+      color: jitterColor(base, 26),
+      load: 0.7 + Math.random()*0.3,   // 载墨量，画长了会"没颜料"
+    });
+  }
+}
+
+function strokeSegment(x0,y0,x1,y1){
+  const dx=x1-x0, dy=y1-y0;
+  const dist = Math.hypot(dx,dy);
+  const steps = Math.max(1, dist|0);
+  const speed = Math.min(1, dist/28); // 画快了颜料变薄
+
+  if(brushType==="blend"){
+    blendSegment(x0,y0,x1,y1,steps);
+    return;
+  }
+  if(brushType==="knife"){
+    knifeSegment(x0,y0,x1,y1);
+    return;
+  }
+  if(brushType==="glaze"){
+    ctx.save();
+    ctx.globalAlpha = brushOpacity*0.06;
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = brushSize*1.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // 圆头 / 平头 / 扇形：逐根笔毛画线
+  ctx.save();
+  ctx.lineCap = "round";
+  const flatSquash = brushType==="flat" ? 0.35 : 1;
+  const ang = Math.atan2(dy,dx);
+  for(const b of bristles){
+    b.load = Math.max(0.15, b.load - dist*0.0012); // 颜料渐渐用完
+    let ox=b.ox, oy=b.oy;
+    if(brushType==="flat"){
+      // 平头笔：笔毛排成与运笔方向垂直的一条线
+      const perp = ang + Math.PI/2;
+      const t = (bristles.indexOf(b)/bristles.length - 0.5)*brushSize;
+      ox = Math.cos(perp)*t; oy = Math.sin(perp)*t*flatSquash + Math.sin(perp)*t*(1-flatSquash);
+    }
+    const alpha = brushOpacity * b.load * (1 - speed*0.35) * (0.5+Math.random()*0.5);
+    ctx.strokeStyle = rgbStr(b.color, Math.max(0.02,alpha));
+    ctx.lineWidth = b.w * (brushType==="fan"?0.8:1);
+    ctx.beginPath();
+    ctx.moveTo(x0+ox, y0+oy);
+    ctx.lineTo(x1+ox, y1+oy);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function knifeSegment(x0,y0,x1,y1){
+  // 画刀：宽而实的色带 + 边缘亮/暗棱线，模拟厚颜料的立体感
+  const ang = Math.atan2(y1-y0,x1-x0);
+  const perp = ang + Math.PI/2;
+  const w = brushSize;
+  const base = hexToRgb(currentColor);
+  ctx.save();
+  ctx.lineCap = "butt";
+  // 主体色带（内部有轻微色变）
+  for(let i=0;i<4;i++){
+    const t=(i/3-0.5)*w*0.8;
+    const c = jitterColor(base, 14);
+    ctx.strokeStyle = rgbStr(c, brushOpacity*0.9);
+    ctx.lineWidth = w/3;
+    ctx.beginPath();
+    ctx.moveTo(x0+Math.cos(perp)*t, y0+Math.sin(perp)*t);
+    ctx.lineTo(x1+Math.cos(perp)*t, y1+Math.sin(perp)*t);
+    ctx.stroke();
+  }
+  // 受光棱（上缘微亮）
+  const lit = base.map(c=>Math.min(255,c+40));
+  ctx.strokeStyle = rgbStr(lit, brushOpacity*0.55);
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x0+Math.cos(perp)*(-w/2), y0+Math.sin(perp)*(-w/2));
+  ctx.lineTo(x1+Math.cos(perp)*(-w/2), y1+Math.sin(perp)*(-w/2));
+  ctx.stroke();
+  // 背光棱（下缘微暗）
+  const sh = base.map(c=>Math.max(0,c-46));
+  ctx.strokeStyle = rgbStr(sh, brushOpacity*0.6);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x0+Math.cos(perp)*(w/2), y0+Math.sin(perp)*(w/2));
+  ctx.lineTo(x1+Math.cos(perp)*(w/2), y1+Math.sin(perp)*(w/2));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function blendSegment(x0,y0,x1,y1,steps){
+  // 调和笔（sfumato）：把路径上的颜色互相揉合
+  const r = brushSize;
+  for(let s=0;s<=steps;s+=2){
+    const t=s/steps;
+    const cx=x0+(x1-x0)*t, cy=y0+(y1-y0)*t;
+    const sx = Math.max(0, cx-r)|0, sy = Math.max(0, cy-r)|0;
+    const sw = Math.min(canvas.width-sx, r*2)|0, sh = Math.min(canvas.height-sy, r*2)|0;
+    if(sw<2||sh<2) continue;
+    const img = ctx.getImageData(sx,sy,sw,sh);
+    const d = img.data;
+    // 求区域平均色
+    let ar=0,ag=0,ab=0,n=0;
+    for(let i=0;i<d.length;i+=16){ ar+=d[i];ag+=d[i+1];ab+=d[i+2];n++; }
+    ar/=n;ag/=n;ab/=n;
+    // 向平均色轻微靠拢（只处理圆形范围内）
+    const mix = 0.16 * brushOpacity;
+    for(let py=0;py<sh;py++){
+      for(let px=0;px<sw;px++){
+        const ddx=px-(cx-sx), ddy=py-(cy-sy);
+        if(ddx*ddx+ddy*ddy > r*r) continue;
+        const falloff = 1 - Math.sqrt(ddx*ddx+ddy*ddy)/r;
+        const i=(py*sw+px)*4;
+        const m = mix*falloff;
+        d[i]   += (ar-d[i])*m;
+        d[i+1] += (ag-d[i+1])*m;
+        d[i+2] += (ab-d[i+2])*m;
+      }
+    }
+    ctx.putImageData(img,sx,sy);
+  }
+}
+
+/* ==================== 事件 ==================== */
+function getPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+  return [(e.clientX-rect.left)*scaleX, (e.clientY-rect.top)*scaleY];
+}
+function pushUndo(){
+  if(undoStack.length>=UNDO_LIMIT) undoStack.shift();
+  undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height));
+}
+canvas.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  pushUndo();
+  painting = true;
+  [lastX,lastY] = getPos(e);
+  initBristles();
+  strokeSegment(lastX,lastY,lastX+0.3,lastY+0.3);
+});
+canvas.addEventListener("pointermove",e=>{
+  if(!painting) return;
+  const [x,y] = getPos(e);
+  strokeSegment(lastX,lastY,x,y);
+  [lastX,lastY] = [x,y];
+});
+["pointerup","pointercancel","pointerleave"].forEach(ev=>
+  canvas.addEventListener(ev,()=>{ painting=false; })
+);
+
+document.getElementById("btnUndo").addEventListener("click",()=>{
+  const img = undoStack.pop();
+  if(img) ctx.putImageData(img,0,0);
+});
+document.getElementById("btnClear").addEventListener("click",()=>{
+  pushUndo();
+  ctx.fillStyle = "#f6f2e8";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  drawCanvasTexture();
+});
+document.getElementById("btnTone").addEventListener("click",()=>{
+  pushUndo();
+  // 古典有色底：半透明熟赭罩一层
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = "#a5764a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+});
+document.getElementById("btnSave").addEventListener("click",()=>{
+  const a = document.createElement("a");
+  a.download = "我的油画作品.png";
+  a.href = canvas.toDataURL("image/png");
+  a.click();
+});
+
+/* ==================== 缩放与平移 ==================== */
+const canvasArea = document.getElementById("canvasArea");
+const zoomSlider = document.getElementById("zoomSlider");
+const zoomVal = document.getElementById("zoomVal");
+const BASE_W = canvas.width, BASE_H = canvas.height;
+let zoom = 1;
+
+function applyZoom(z, cx, cy){
+  z = Math.max(0.25, Math.min(4, z));
+  const rect = canvasArea.getBoundingClientRect();
+  if(cx===undefined){ cx = rect.width/2; cy = rect.height/2; }
+  // 记录光标下的内容点，缩放后把它滚回光标处
+  const px = canvasArea.scrollLeft + cx;
+  const py = canvasArea.scrollTop + cy;
+  const ratio = z/zoom;
+  zoom = z;
+  canvas.style.width  = (BASE_W*zoom)+"px";
+  canvas.style.height = (BASE_H*zoom)+"px";
+  canvasArea.scrollLeft = px*ratio - cx;
+  canvasArea.scrollTop  = py*ratio - cy;
+  zoomSlider.value = Math.round(zoom*100);
+  zoomVal.textContent = Math.round(zoom*100)+"%";
+}
+zoomSlider.addEventListener("input",e=>applyZoom(+e.target.value/100));
+document.getElementById("btnZoomIn").addEventListener("click",()=>applyZoom(zoom*1.25));
+document.getElementById("btnZoomOut").addEventListener("click",()=>applyZoom(zoom/1.25));
+document.getElementById("btnZoomFit").addEventListener("click",()=>applyZoom(1));
+
+// Ctrl + 滚轮：以鼠标为中心缩放
+canvasArea.addEventListener("wheel",e=>{
+  if(!e.ctrlKey) return;
+  e.preventDefault();
+  const rect = canvasArea.getBoundingClientRect();
+  const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+  applyZoom(zoom*factor, e.clientX-rect.left, e.clientY-rect.top);
+},{passive:false});
+
+// 按住空格 + 拖动平移
+let spaceDown = false, panDrag = null;
+document.addEventListener("keydown",e=>{
+  if(e.code!=="Space" || spaceDown) return;
+  const t = e.target;
+  if(t.tagName==="INPUT" || t.tagName==="BUTTON" || t.tagName==="TEXTAREA") return;
+  e.preventDefault();
+  spaceDown = true;
+  canvasArea.classList.add("panning");
+});
+document.addEventListener("keyup",e=>{
+  if(e.code!=="Space") return;
+  spaceDown = false;
+  panDrag = null;
+  canvasArea.classList.remove("panning");
+});
+canvasArea.addEventListener("pointerdown",e=>{
+  if(!spaceDown) return;
+  e.preventDefault();
+  canvasArea.setPointerCapture(e.pointerId);
+  panDrag = {x:e.clientX, y:e.clientY, sl:canvasArea.scrollLeft, st:canvasArea.scrollTop};
+});
+canvasArea.addEventListener("pointermove",e=>{
+  if(!panDrag) return;
+  canvasArea.scrollLeft = panDrag.sl - (e.clientX - panDrag.x);
+  canvasArea.scrollTop  = panDrag.st - (e.clientY - panDrag.y);
+});
+["pointerup","pointercancel"].forEach(ev=>
+  canvasArea.addEventListener(ev,()=>{ panDrag = null; })
+);
+
+/* ==================== 页签切换 ==================== */
+const studio = document.getElementById("studio");
+const academy = document.getElementById("academy");
+const decompose = document.getElementById("decompose");
+const tabStudio = document.getElementById("tabStudio");
+const tabAcademy = document.getElementById("tabAcademy");
+const tabDecompose = document.getElementById("tabDecompose");
+function showView(name){
+  studio.classList.toggle("hidden", name!=="studio");
+  academy.classList.toggle("visible", name==="academy");
+  decompose.classList.toggle("visible", name==="decompose");
+  tabStudio.classList.toggle("active", name==="studio");
+  tabAcademy.classList.toggle("active", name==="academy");
+  tabDecompose.classList.toggle("active", name==="decompose");
+}
+tabStudio.addEventListener("click",()=>showView("studio"));
+tabAcademy.addEventListener("click",()=>showView("academy"));
+tabDecompose.addEventListener("click",()=>showView("decompose"));
+
+/* ==================== 拆解临摹引擎 ==================== */
+const fileInput = document.getElementById("fileInput");
+const dropZone = document.getElementById("dropZone");
+const stepsList = document.getElementById("stepsList");
+const decoViewer = document.getElementById("decoViewer");
+const decoEmpty = document.getElementById("decoEmpty");
+const decoBar = document.getElementById("decoBar");
+const decoDesc = document.getElementById("decoDesc");
+let decoSteps = [];
+let decoActive = -1;
+
+dropZone.addEventListener("click",()=>fileInput.click());
+dropZone.addEventListener("dragover",e=>{e.preventDefault();dropZone.classList.add("dragover");});
+dropZone.addEventListener("dragleave",()=>dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop",e=>{
+  e.preventDefault();dropZone.classList.remove("dragover");
+  const f = e.dataTransfer.files[0];
+  if(f) loadPainting(f);
+});
+fileInput.addEventListener("change",e=>{ if(e.target.files[0]) loadPainting(e.target.files[0]); });
+
+function loadPainting(file){
+  const img = new Image();
+  img.onload = ()=>{
+    URL.revokeObjectURL(img.src);
+    decoEmpty.style.display = "block";
+    decoViewer.style.display = "none";
+    decoBar.classList.remove("visible");
+    decoEmpty.innerHTML = "🎨<br>正在拆解画作，请稍候…";
+    setTimeout(()=>decomposePainting(img), 40); // 让"稍候"文字先渲染出来
+  };
+  img.onerror = ()=>{ decoEmpty.innerHTML = "⚠️<br>这张图片读取失败，换一张试试"; };
+  img.src = URL.createObjectURL(file);
+}
+
+/* ---------- 图像处理工具 ---------- */
+function makeCanvas(w,h){ const c=document.createElement("canvas"); c.width=w; c.height=h; return c; }
+function fitPainting(img){
+  const MAX = 900;
+  const sc = Math.min(1, MAX/Math.max(img.width,img.height));
+  const c = makeCanvas(Math.max(1,Math.round(img.width*sc)), Math.max(1,Math.round(img.height*sc)));
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  return c;
+}
+function lum(r,g,b){ return 0.299*r+0.587*g+0.114*b; }
+function rgbToHex(rgb){
+  return "#"+rgb.map(v=>Math.round(v).toString(16).padStart(2,"0")).join("");
+}
+function nearestMaster(rgb){
+  let best=null, bd=Infinity;
+  for(const [name,hex] of MASTER_COLORS){
+    const c = hexToRgb(hex);
+    const d = (rgb[0]-c[0])**2 + (rgb[1]-c[1])**2 + (rgb[2]-c[2])**2;
+    if(d<bd){ bd=d; best={name,hex}; }
+  }
+  return best;
+}
+// k-means 聚类提取主色（抽样加速）
+function kmeans(data, k, iters){
+  iters = iters || 10;
+  const pts = [];
+  const stride = Math.max(1, Math.floor(data.length/4/4000));
+  for(let i=0;i<data.length;i+=4*stride) pts.push([data[i],data[i+1],data[i+2]]);
+  pts.sort((a,b)=>lum(a[0],a[1],a[2])-lum(b[0],b[1],b[2]));
+  let cents = [];
+  for(let i=0;i<k;i++) cents.push(pts[Math.floor((i+0.5)*pts.length/k)].slice());
+  let counts = new Array(k).fill(0);
+  for(let it=0;it<iters;it++){
+    const sum = cents.map(()=>[0,0,0,0]);
+    for(const p of pts){
+      let bi=0, bd=Infinity;
+      for(let ci=0;ci<k;ci++){
+        const c=cents[ci];
+        const d=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2;
+        if(d<bd){bd=d;bi=ci;}
+      }
+      const s=sum[bi]; s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];s[3]++;
+    }
+    for(let ci=0;ci<k;ci++){
+      if(sum[ci][3]>0) cents[ci]=[sum[ci][0]/sum[ci][3], sum[ci][1]/sum[ci][3], sum[ci][2]/sum[ci][3]];
+    }
+    counts = sum.map(s=>s[3]);
+  }
+  return cents.map((c,i)=>({rgb:c.map(Math.round), count:counts[i]}))
+              .filter(c=>c.count>0);
+}
+// 把画布颜色量化到给定主色
+function quantizeData(d, cents){
+  for(let i=0;i<d.length;i+=4){
+    let bi=0, bd=Infinity;
+    for(let ci=0;ci<cents.length;ci++){
+      const c=cents[ci];
+      const dd=(d[i]-c[0])**2+(d[i+1]-c[1])**2+(d[i+2]-c[2])**2;
+      if(dd<bd){bd=dd;bi=ci;}
+    }
+    d[i]=cents[bi][0]; d[i+1]=cents[bi][1]; d[i+2]=cents[bi][2];
+  }
+}
+
+/* ---------- 各步骤生成 ---------- */
+function toneStep(src, avg){
+  const c = makeCanvas(src.width, src.height);
+  const x = c.getContext("2d");
+  // 有色底：平均色向中灰棕靠拢，模拟古典底色
+  const mix = mixRgb(avg, [150,118,84], 0.5);
+  x.fillStyle = rgbStr(mix, 1);
+  x.fillRect(0,0,c.width,c.height);
+  return {canvas:c, hex:rgbToHex(mix)};
+}
+function sobelStep(src){
+  const w=src.width, h=src.height;
+  const d = src.getContext("2d").getImageData(0,0,w,h).data;
+  const g = new Float32Array(w*h);
+  for(let i=0,p=0;i<d.length;i+=4,p++) g[p]=lum(d[i],d[i+1],d[i+2]);
+  const out = makeCanvas(w,h);
+  const octx = out.getContext("2d");
+  const od = octx.createImageData(w,h);
+  const o = od.data;
+  o.fill(243);
+  for(let i=3;i<o.length;i+=4) o[i]=255;
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x;
+      const gx = -g[i-w-1]-2*g[i-1]-g[i+w-1]+g[i-w+1]+2*g[i+1]+g[i+w+1];
+      const gy = -g[i-w-1]-2*g[i-w]-g[i-w+1]+g[i+w-1]+2*g[i+w]+g[i+w+1];
+      const m = Math.min(255, Math.hypot(gx,gy)*1.4);
+      const v = Math.max(40, 243-m);
+      const oi=i*4;
+      o[oi]=v; o[oi+1]=v*0.94; o[oi+2]=v*0.85; // 略偏棕的线条
+    }
+  }
+  octx.putImageData(od,0,0);
+  // 九宫格辅助线
+  octx.strokeStyle = "rgba(196,57,43,.45)";
+  octx.lineWidth = 1;
+  for(let i=1;i<3;i++){
+    octx.beginPath(); octx.moveTo(w*i/3,0); octx.lineTo(w*i/3,h); octx.stroke();
+    octx.beginPath(); octx.moveTo(0,h*i/3); octx.lineTo(w,h*i/3); octx.stroke();
+  }
+  return out;
+}
+function underpaintingStep(src){
+  const ramp = [[46,32,19],[92,64,38],[143,106,63],[196,166,118],[242,232,213]];
+  const w=src.width, h=src.height;
+  const id = src.getContext("2d").getImageData(0,0,w,h);
+  const d = id.data;
+  for(let i=0;i<d.length;i+=4){
+    const L = lum(d[i],d[i+1],d[i+2]);
+    const idx = Math.min(ramp.length-1, Math.floor(L/256*ramp.length));
+    d[i]=ramp[idx][0]; d[i+1]=ramp[idx][1]; d[i+2]=ramp[idx][2];
+  }
+  const out = makeCanvas(w,h);
+  out.getContext("2d").putImageData(id,0,0);
+  return out;
+}
+function blurQuantStep(src, blurPx, k){
+  const w=src.width, h=src.height;
+  const b = makeCanvas(w,h);
+  const bx = b.getContext("2d");
+  bx.drawImage(src,0,0);
+  bx.filter = `blur(${blurPx}px)`;
+  bx.drawImage(src,0,0);
+  bx.filter = "none";
+  const id = bx.getImageData(0,0,w,h);
+  const cents = kmeans(id.data, k).map(c=>c.rgb);
+  quantizeData(id.data, cents);
+  const out = makeCanvas(w,h);
+  out.getContext("2d").putImageData(id,0,0);
+  return out;
+}
+function highlightStep(src){
+  const w=src.width, h=src.height;
+  const id = src.getContext("2d").getImageData(0,0,w,h);
+  const d = id.data;
+  const ls = [];
+  for(let i=0;i<d.length;i+=4*7) ls.push(lum(d[i],d[i+1],d[i+2]));
+  ls.sort((a,b)=>a-b);
+  const th = ls[Math.floor(ls.length*0.93)];
+  for(let i=0;i<d.length;i+=4){
+    if(lum(d[i],d[i+1],d[i+2]) < th){
+      d[i]*=0.22; d[i+1]*=0.22; d[i+2]*=0.22;
+    }
+  }
+  const out = makeCanvas(w,h);
+  out.getContext("2d").putImageData(id,0,0);
+  return out;
+}
+
+/* ---------- 主流程 ---------- */
+function decomposePainting(img){
+  const src = fitPainting(img);
+  const one = makeCanvas(1,1);
+  one.getContext("2d").drawImage(src,0,0,1,1);
+  const ad = one.getContext("2d").getImageData(0,0,1,1).data;
+  const avg = [ad[0],ad[1],ad[2]];
+  const tone = toneStep(src, avg);
+  const tonePig = nearestMaster(hexToRgb(tone.hex));
+
+  const url = c => c.toDataURL("image/jpeg", 0.88);
+  decoSteps = [
+    {name:"① 有色底", sub:"Toned Ground",
+     desc:`把整张画布刷成这个颜色（<b>${tone.hex}</b>，约等于 <b>${tonePig.name}</b> 加白稀释）。古典画家从不在纯白画布上直接画。`,
+     url:url(tone.canvas)},
+    {name:"② 起形线稿", sub:"Drawing In · 九宫格",
+     desc:`照着轮廓线用稀薄的熟褐起形。红色九宫格是定位辅助：先看清主体落在哪几格，比例就不会跑。`,
+     url:url(sobelStep(src))},
+    {name:"③ 单色底层画", sub:"Underpainting · 五调子",
+     desc:`只用<b>熟褐 + 白</b>画明暗，整张画压缩成 5 个深浅层次。这一步画对了，素描关系就立住了——别管颜色，只看黑白灰。`,
+     url:url(underpaintingStep(src))},
+    {name:"④ 铺大色块", sub:"Blocking In",
+     desc:`算法替你"眯起了眼睛"：全画只剩约 10 种颜色的大色块。用大号平头笔照着铺满画布，<b>宁可画大块，不要抠细节</b>。`,
+     url:url(blurQuantStep(src, 9, 10))},
+    {name:"⑤ 塑造层次", sub:"Modeling",
+     desc:`颜色层次加多、边缘变清晰。在大色块基础上细分过渡，用调和笔柔化明暗交界（sfumato）。`,
+     url:url(blurQuantStep(src, 3, 22))},
+    {name:"⑥ 高光点位", sub:"Highlights",
+     desc:`画面压暗后只剩最亮的部分——这些就是最后用厚颜料"点"上去的高光位置。高光宁少勿多，点错不如不点。`,
+     url:url(highlightStep(src))},
+    {name:"⑦ 完成对照", sub:"Finished Reference",
+     desc:`原图。前六步都完成后，对照它做最后的调整：边缘的虚实取舍、细节的补充、以及签名。`,
+     url:url(src)},
+  ];
+
+  stepsList.innerHTML = "";
+  decoSteps.forEach((s,i)=>{
+    const el = document.createElement("div");
+    el.className = "step-item";
+    el.innerHTML = `<img src="${s.url}"><div><div class="si-name">${s.name}</div><div class="si-sub">${s.sub}</div></div>`;
+    el.addEventListener("click",()=>selectStep(i));
+    stepsList.appendChild(el);
+  });
+  document.getElementById("stepsSection").style.display = "block";
+  buildDecoPalette(src);
+  selectStep(0);
+  dropZone.innerHTML = "📤 换一张画重新拆解<br><span style='font-size:11px;'>全程在你的浏览器里处理</span>";
+}
+
+function selectStep(i){
+  decoActive = i;
+  const s = decoSteps[i];
+  decoViewer.src = s.url;
+  decoViewer.style.display = "block";
+  decoEmpty.style.display = "none";
+  decoDesc.innerHTML = `<b>${s.name} ${s.sub}</b><br>${s.desc}`;
+  decoBar.classList.add("visible");
+  document.querySelectorAll(".step-item").forEach((el,j)=>el.classList.toggle("active", j===i));
+}
+
+function buildDecoPalette(src){
+  const w=src.width, h=src.height;
+  const data = src.getContext("2d").getImageData(0,0,w,h).data;
+  const cents = kmeans(data, 8).sort((a,b)=>b.count-a.count);
+  const wrap = document.getElementById("decoPalette");
+  const hint = document.getElementById("pigmentHint");
+  wrap.innerHTML = "";
+  cents.forEach(c=>{
+    const hex = rgbToHex(c.rgb);
+    const pig = nearestMaster(c.rgb);
+    const sw = document.createElement("div");
+    sw.className = "swatch";
+    sw.style.background = hex;
+    sw.title = `${hex} ≈ ${pig.name}`;
+    sw.addEventListener("mouseenter",()=>{ hint.textContent = `${hex} ≈ ${pig.name}`; });
+    sw.addEventListener("click",()=>{
+      currentColor = hex;
+      document.querySelectorAll("#palette .swatch").forEach(s=>s.classList.remove("active"));
+      updateColorBox();
+      hint.textContent = `已设为画笔颜色：${hex} ≈ ${pig.name}`;
+    });
+    wrap.appendChild(sw);
+  });
+  document.getElementById("paletteSection").style.display = "block";
+}
+
+/* ---------- 垫图临摹 ---------- */
+const traceOverlay = document.getElementById("traceOverlay");
+const traceSection = document.getElementById("traceSection");
+document.getElementById("btnTrace").addEventListener("click",()=>{
+  if(decoActive<0) return;
+  traceOverlay.src = decoSteps[decoActive].url;
+  traceOverlay.style.display = "block";
+  traceSection.style.display = "block";
+  showView("studio");
+});
+document.getElementById("btnStepSave").addEventListener("click",()=>{
+  if(decoActive<0) return;
+  const a = document.createElement("a");
+  a.download = `油画拆解_${decoSteps[decoActive].name.replace(/[①-⑦]\s*/,"")}.jpg`;
+  a.href = decoSteps[decoActive].url;
+  a.click();
+});
+document.getElementById("traceOpacity").addEventListener("input",e=>{
+  traceOverlay.style.opacity = e.target.value/100;
+  document.getElementById("traceVal").textContent = e.target.value+"%";
+});
+document.getElementById("btnTraceToggle").addEventListener("click",()=>{
+  traceOverlay.style.display = traceOverlay.style.display==="none" ? "block" : "none";
+});
+document.getElementById("btnTraceRemove").addEventListener("click",()=>{
+  traceOverlay.style.display = "none";
+  traceOverlay.src = "";
+  traceSection.style.display = "none";
+});
+</script>
+</body>
+</html>
