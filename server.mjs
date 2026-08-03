@@ -47,16 +47,28 @@ Line types:
 {"t":"stage","name":"① 铺有色底","note":"一句话说明这阶段在做什么(中文)"}
    Stages: ① 铺有色底 → ② 起形 → ③ 单色底层画 → ④ 铺大色块 → ⑤ 塑造 → ⑥ 细节与高光 → ⑦ 罩染统一
 3. Stroke:
-{"t":"s","b":"flat","c":"#RRGGBB","s":60,"o":0.85,"p":[[x,y],[x,y],...]}
-   b = brush: "round" (soft round brush, sketching/lines/small forms), "flat" (broad flat brush, blocking in), "fan" (fan brush, foliage/texture/soft scatter), "knife" (palette knife, thick impasto highlights), "glaze" (thin transparent glaze, very low opacity washes), "blend" (blender, softening edges)
-   c = paint color hex, s = brush size in canvas px (large 60-140 for washes/blocking, medium 20-50 for modeling, small 4-16 for details), o = opacity 0.05-1, p = path polyline of 2-12 points. Use gently curved, varied, natural paths — never perfectly straight grids.
+{"t":"s","b":"flat","c":"#RRGGBB","s":40,"o":0.55,"p":[[x,y],[x,y],...]}
+   b = brush type (a full Renaissance atelier kit):
+     "wash"    huge thin soft-edged washes — toned ground, sky, background only
+     "round"   soft round sable — contour lines, small forms, final details
+     "flat"    flat bristle brush — blocking in planes of color
+     "fan"     fan brush — foliage, hair strands, scattered texture
+     "knife"   palette knife impasto — thick FINAL highlights only, sparingly
+     "glaze"   transparent glaze — deepening shadows, unifying color regions
+     "sfumato" Leonardo's smoky blending — flesh transitions, soft edges between light and shadow; use generously on figures and faces
+     "scumble" dry-brush broken texture — rocks, fabric, clouds, mist
+     "blend"   blender — softening an already-painted edge
+   c = paint color hex, s = brush size in canvas px (80-160 wash only; 25-60 blocking; 10-25 modeling; 3-10 details), o = opacity 0.05-1, p = path polyline of 2-12 points, gently curved and natural.
 4. Last line: {"t":"end"}
 
-Painting rules — follow them like a real master:
-- Total strokes: about ${nStrokes} (within ±15%). Budget roughly: stage① 4-8 huge covering strokes, ② ~10%, ③ ~15%, ④ ~25% big blocks, ⑤ ~25%, ⑥ ~20% small strokes + knife highlights, ⑦ 3-6 large glaze strokes.
+Painting rules — follow them like a real Renaissance master:
+- Total strokes: about ${nStrokes} (within ±15%). Budget roughly: stage① 4-8 wash strokes covering all, ② ~10% thin round lines, ③ ~15% flat/round monochrome + a few sfumato, ④ ~25% flat blocks, ⑤ ~25% modeling with flat/round/sfumato/scumble, ⑥ ~20% small round + a few knife highlights, ⑦ 3-6 large glaze strokes.
+- STROKES FOLLOW THE FORM: curve each path along anatomy, drapery folds, and contours of what you are painting. Short overlapping strokes (each path spanning less than 1/3 of the canvas) build form; NEVER drag one long wide band across a whole figure.
+- Build flesh in soft layers: warm halftones at o≈0.45-0.65, then sfumato strokes across every light-shadow boundary, tiny bright highlights last.
+- Prefer opacity 0.4-0.7 during block-in and modeling so layers blend optically; reserve o>0.85 for stage ⑥ highlights only.
 - Work large → small, dark → light, thin → thick (fat over lean). Background before foreground.
-- Sample colors faithfully from the actual painting; stage ② uses thin dark burnt umber (#3a2a1a-ish) lines; stage ③ is monochrome browns establishing values.
-- Strokes must cumulatively cover the canvas — no bare patches at the end. The final result should genuinely resemble the original painting in composition, values, and color.
+- Each stroke's color must match the LOCAL color of the original painting at that stroke's location; stage ② uses thin dark burnt umber (#3a2a1a-ish) lines; stage ③ is monochrome browns establishing values.
+- COVER THE WHOLE CANVAS: by the end of stage ④ every region (background included) must be painted over — no bare ground showing anywhere. Then refine on top.
 - Coordinates are integers. Keep every JSON object on a single line. Output nothing except NDJSON lines.`;
 }
 

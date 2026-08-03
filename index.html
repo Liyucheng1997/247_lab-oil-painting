@@ -1633,6 +1633,8 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
   const rctx      = rCanvas.getContext("2d");
 
   let srcData = null;          // {dataURL, w, h}
+  let srcPix = null;           // 原图像素缓存，用于色彩保真采样
+  let stageNo = 0;             // 当前作画阶段序号（决定色彩保真度）
   let abortCtl = null;
   let running = false;         // 正在接收 SSE
   let allEvents = [];          // 完整事件流（stage / s），用于重新放映
@@ -1676,6 +1678,8 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
       const c = makeCanvas(w,h);
       c.getContext("2d").drawImage(img,0,0,w,h);
       srcData = { dataURL:c.toDataURL("image/jpeg",0.9), w, h };
+      // 缓存原图像素：落笔时按位置采样真实色彩（色彩保真）
+      srcPix = { d: c.getContext("2d").getImageData(0,0,w,h).data, w, h };
       drop.innerHTML = "";
       const thumb = new Image();
       thumb.src = srcData.dataURL;
@@ -1713,39 +1717,72 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
 
   rOrig.addEventListener("click",()=>{ rOrig.style.opacity = rOrig.style.opacity==="0.15" ? "0.92" : "0.15"; });
 
-  /* ---------- 笔触渲染 ---------- */
+  /* ---------- 笔触渲染（文艺复兴笔刷组）---------- */
   function prepStroke(s){
-    const size = Math.max(2, Math.min(200, +s.s || 12));
+    const size = Math.max(2, Math.min(220, +s.s || 12));
     const opRaw = +s.o;
     const op = Math.max(0.03, Math.min(1, isFinite(opRaw) ? opRaw : 0.85));
     const rgb = hexToRgb(s.c || "#4e3320");
-    const b = s.b || "round";
+    const KNOWN = ["round","flat","fan","knife","glaze","blend","sfumato","scumble","wash"];
+    const b = KNOWN.includes(s.b) ? s.b : "round";
     const pts = (s.p||[]).map(p=>[+p[0],+p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+    if(pts.length===0) pts.push([0,0]);
     if(pts.length===1) pts.push([pts[0][0]+size*0.4, pts[0][1]+size*0.4]);
-    // 累积长度
     const cum=[0];
     for(let i=1;i<pts.length;i++){
       cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]));
     }
-    // 笔毛
+    // 笔毛：每根有自己的偏移、摆动相位，沿路径连续描绘（消除拼接网格感）
     let bristles=[];
-    if(b==="round"||b==="flat"||b==="fan"){
-      const n = b==="fan" ? Math.max(9,Math.round(size/2.5)) : Math.max(6,Math.round(size/3)+3);
+    if(b==="round"||b==="flat"||b==="fan"||b==="scumble"){
+      const n = b==="fan"     ? Math.max(9, Math.round(size/2.5))
+              : b==="scumble" ? Math.max(10, Math.round(size/2))
+              : b==="flat"    ? Math.max(8, Math.round(size/2.2))
+              :                 Math.max(7, Math.round(size/2.8));
+      // 整笔共享摆动相位，笔毛间只有微小相差（避免摩尔纹）
+      const strokePh = Math.random()*6.28;
+      const strokeF  = 0.03+Math.random()*0.03;
       for(let i=0;i<n;i++){
-        const t = n===1?0:(i/(n-1))*2-1;
+        const t = n===1?0:(i/(n-1))*2-1;                 // -1..1 横截面位置
+        const gauss = Math.exp(-t*t*2);                  // 中间实、边缘虚
         bristles.push({
-          off: t*(size/2)*(b==="fan"?1.5:1) + (Math.random()-0.5)*size*0.12,
-          w:  b==="fan" ? (0.8+Math.random()*1.2)
-             : b==="flat" ? size/n*1.75
-             : (size/n)*(2.0-Math.abs(t)*0.9),
-          a:  b==="fan" ? op*(0.25+Math.random()*0.4)
-             : op*(0.5+0.5*(1-Math.abs(t)))*(0.75+Math.random()*0.25),
-          col: jitterColor(rgb, b==="fan"?18:10),
-          skip: b==="fan" && Math.random()<0.25
+          off: t*(size/2)*(b==="fan"?1.5:b==="scumble"?1.2:1) + (Math.random()-0.5)*size*0.08,
+          w:  b==="fan"     ? (0.7+Math.random()*1.1)
+             : b==="scumble" ? (0.8+Math.random()*1.4)
+             : b==="flat"    ? size/n*2.2
+             : (size/n)*2.4*gauss + 0.5,
+          a:  b==="fan"     ? op*(0.18+Math.random()*0.3)
+             : b==="scumble" ? op*(0.15+Math.random()*0.22)
+             : b==="flat"    ? op*(0.4+0.35*gauss)*(0.8+Math.random()*0.2)
+             : op*(0.3+0.55*gauss),
+          col: jitterColor(rgb, b==="fan"||b==="scumble"?16:8),
+          wob: size*0.02,                                // 摆动幅度（小）
+          f:   strokeF,
+          ph:  strokePh + i*0.15,
+          dash: b==="scumble" ? 0.4 : b==="fan" ? 0.15 : 0,  // 断笔概率（干扫肌理）
+          lx: undefined, ly: undefined,
         });
       }
     }
-    return { b, rgb, size, op, pts, cum, len: cum[cum.length-1]||1, dist:0, bristles };
+    // 色彩保真度：铺底/起形保留模型的古典底色，单色底层轻度校正，之后阶段高度贴合原图
+    const stg = s._stg;
+    const fid = stg===undefined ? 0.7 : stg<=2 ? 0 : stg===3 ? 0.35 : 0.85;
+    return { b, rgb, size, op, pts, cum, len: cum[cum.length-1]||1, dist:0, bristles, fid,
+             lx: undefined, ly: undefined, rlx: undefined, rly: undefined };
+  }
+
+  function sampleSrc(x,y){
+    if(!srcPix) return null;
+    const xi = Math.max(0, Math.min(srcPix.w-1, x|0));
+    const yi = Math.max(0, Math.min(srcPix.h-1, y|0));
+    const i = (yi*srcPix.w + xi)*4;
+    return [srcPix.d[i], srcPix.d[i+1], srcPix.d[i+2]];
+  }
+  // 模型给的颜色 × 原图对应位置的真实颜色，按阶段保真度混合
+  function colAt(st, base, x, y){
+    if(st.fid<=0) return base;
+    const s = sampleSrc(x,y);
+    return s ? mixRgb(base, s, st.fid) : base;
   }
 
   function pointAt(st, d){
@@ -1758,48 +1795,70 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
     return [pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t, pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];
   }
 
+  function softLine(st, x0,y0,x1,y1, width, alpha, blur){
+    const col = rgbStr(colAt(st, st.rgb, x1, y1), 1);
+    rctx.globalAlpha = alpha;
+    rctx.strokeStyle = col;
+    rctx.lineWidth = width;
+    if(blur){ rctx.shadowColor = col; rctx.shadowBlur = blur; }
+    else rctx.shadowBlur = 0;
+    rctx.beginPath();
+    rctx.moveTo(st.lx!==undefined?st.lx:x0, st.ly!==undefined?st.ly:y0);
+    rctx.lineTo(x1,y1);
+    rctx.stroke();
+  }
+
   function drawSeg(st, x0,y0,x1,y1){
     const dx=x1-x0, dy=y1-y0, dd=Math.hypot(dx,dy)||1;
     const nx=-dy/dd, ny=dx/dd;
     rctx.save();
-    rctx.lineCap = st.b==="flat"||st.b==="knife" ? "butt" : "round";
-    if(st.b==="knife"){
-      rctx.globalAlpha = Math.min(1, st.op*1.1);
-      rctx.strokeStyle = rgbStr(st.rgb,1);
+    rctx.lineCap = "round";
+    rctx.lineJoin = "round";
+    const b = st.b;
+    if(b==="knife"){
+      const kcol = colAt(st, st.rgb, x1, y1);
+      rctx.globalAlpha = Math.min(1, st.op*1.05);
+      rctx.strokeStyle = rgbStr(kcol,1);
       rctx.lineWidth = st.size;
-      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
-      // 刀痕亮脊
-      const lite = st.rgb.map(v=>Math.min(255,v+34));
-      rctx.globalAlpha = st.op*0.5;
-      rctx.strokeStyle = rgbStr(lite,1);
-      rctx.lineWidth = Math.max(1.5, st.size/5);
       rctx.beginPath();
-      rctx.moveTo(x0+nx*st.size*0.3, y0+ny*st.size*0.3);
-      rctx.lineTo(x1+nx*st.size*0.3, y1+ny*st.size*0.3);
-      rctx.stroke();
-    } else if(st.b==="glaze"){
-      rctx.globalAlpha = st.op*0.16;
-      rctx.strokeStyle = rgbStr(st.rgb,1);
-      rctx.lineWidth = st.size*1.6;
-      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
-    } else if(st.b==="blend"){
-      rctx.globalAlpha = 0.09;
-      rctx.strokeStyle = rgbStr(st.rgb,1);
-      rctx.lineWidth = st.size*1.4;
-      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
+      rctx.moveTo(st.lx!==undefined?st.lx:x0, st.ly!==undefined?st.ly:y0);
+      rctx.lineTo(x1,y1); rctx.stroke();
+      // 刀痕亮脊
+      const lite = kcol.map(v=>Math.min(255,v+30));
+      rctx.globalAlpha = st.op*0.4;
+      rctx.strokeStyle = rgbStr(lite,1);
+      rctx.lineWidth = Math.max(1.5, st.size/6);
+      rctx.beginPath();
+      rctx.moveTo(st.rlx!==undefined?st.rlx:x0+nx*st.size*0.28, st.rly!==undefined?st.rly:y0+ny*st.size*0.28);
+      rctx.lineTo(x1+nx*st.size*0.28, y1+ny*st.size*0.28); rctx.stroke();
+      st.rlx = x1+nx*st.size*0.28; st.rly = y1+ny*st.size*0.28;
+    } else if(b==="glaze"){
+      softLine(st, x0,y0,x1,y1, st.size*1.6, st.op*0.09, st.size*0.25);
+    } else if(b==="wash"){
+      softLine(st, x0,y0,x1,y1, st.size*2.2, st.op*0.14, st.size*0.5);
+    } else if(b==="blend"){
+      softLine(st, x0,y0,x1,y1, st.size*1.5, 0.06, st.size*0.5);
+    } else if(b==="sfumato"){
+      // 达·芬奇晕涂：两层大模糊叠加，"像烟雾一样没有边界"
+      softLine(st, x0,y0,x1,y1, st.size*1.8, st.op*0.04, st.size*0.8);
+      softLine(st, x0,y0,x1,y1, st.size*1.05, st.op*0.055, st.size*0.4);
     } else {
       for(const br of st.bristles){
-        if(br.skip) continue;
+        if(br.dash && Math.random()<br.dash){ br.lx = undefined; continue; }  // 干扫断笔
+        const ox = br.off + Math.sin(st.dist*br.f + br.ph)*br.wob;
+        const px = x1+nx*ox, py = y1+ny*ox;
         rctx.globalAlpha = Math.min(1, br.a);
-        rctx.strokeStyle = rgbStr(br.col,1);
-        rctx.lineWidth = Math.max(0.6, br.w);
+        rctx.strokeStyle = rgbStr(colAt(st, br.col, px, py),1);
+        rctx.lineWidth = Math.max(0.5, br.w);
         rctx.beginPath();
-        rctx.moveTo(x0+nx*br.off, y0+ny*br.off);
-        rctx.lineTo(x1+nx*br.off, y1+ny*br.off);
+        rctx.moveTo(br.lx!==undefined?br.lx:x0+nx*ox, br.ly!==undefined?br.ly:y0+ny*ox);
+        rctx.lineTo(px,py);
         rctx.stroke();
+        br.lx=px; br.ly=py;
       }
     }
     rctx.restore();
+    st.lx=x1; st.ly=y1;
   }
 
   /* ---------- 动画循环 ---------- */
@@ -1885,7 +1944,7 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
     if(!srcData || running) return;
     running = true;
     allEvents = []; metaEvt = null; queue = []; cur = null;
-    paintedStrokes = 0; totalStrokes = 0;
+    paintedStrokes = 0; totalStrokes = 0; stageNo = 0;
     stagesUl.innerHTML = ""; stageSec.style.display = "none";
     ctrlSec.style.display = "block";
     btnStart.disabled = true; btnStop.style.display = "block";
@@ -1940,8 +1999,17 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
   function handleEvent(ev){
     switch(ev.t){
       case "sys":
-        if(ev.phase==="connected") setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 已就位，正在打开画作…`);
-        if(ev.phase==="looking")  setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详这幅画，构思落笔顺序…`);
+        if(ev.phase==="starting"){
+          setStatus(`✅ 已连接伴侣服务<br><span class="pulse-dot"></span>正在唤醒 <b>${modelLabel}</b>…`);
+        }
+        if(ev.phase==="connected"){
+          setStatus(`✅ <b>${modelLabel}</b> 已就位<br><span class="pulse-dot"></span>正在打开画作…`);
+          setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 已就位，正在打开画作…`);
+        }
+        if(ev.phase==="looking"){
+          setStatus(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详画作、构思全部笔触…<br><span style="font-size:11px;">深思模型（如 Fable 5）此阶段约需 1~3 分钟，请稍候</span>`);
+          setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详这幅画，构思落笔顺序…`);
+        }
         break;
       case "meta":
         metaEvt = ev;
@@ -1949,9 +2017,11 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
         if(ev.title) setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 判定此作为《${ev.title}》，开始铺有色底…`);
         break;
       case "stage":
+        stageNo++;
         allEvents.push(ev); registerStage(ev); queue.push(ev);
         break;
       case "s":
+        ev._stg = stageNo;
         allEvents.push(ev); queue.push(ev); totalStrokes++;
         updateProgress();
         break;
@@ -1999,6 +2069,19 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
     traceSection.style.display = "block";
     showView("studio");
   });
+
+  /* ---------- 调试：本地注入笔触（不经模型）---------- */
+  window.__atelierInject = (evts)=>{
+    if(!srcData) return "先上传一张图";
+    allEvents = []; queue = []; cur = null;
+    paintedStrokes = 0; totalStrokes = 0; stageNo = 0;
+    stagesUl.innerHTML = "";
+    modelLabel = "本地测试";
+    t0 = performance.now();
+    evts.forEach(handleEvent);
+    startPump();
+    return `injected ${evts.length} events`;
+  };
 
   /* ---------- 进入页签时探测服务 ---------- */
   tabReplay.addEventListener("click", async ()=>{
