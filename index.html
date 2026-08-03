@@ -435,6 +435,116 @@
     opacity:.4;
     display:none;
   }
+
+  /* ============ AI 重演 ============ */
+  #replay{display:none;flex:1;overflow:hidden;}
+  #replay.visible{display:flex;}
+  #replaySide{
+    width:270px;
+    background:var(--panel);
+    border-right:1px solid #1e1a15;
+    padding:14px;
+    overflow-y:auto;
+    flex-shrink:0;
+  }
+  #replayDrop{
+    border:2px dashed var(--panel-light);
+    border-radius:6px;
+    padding:16px 10px;
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13px;
+    cursor:pointer;
+    transition:all .2s;
+    line-height:1.8;
+  }
+  #replayDrop:hover,#replayDrop.dragover{border-color:var(--gold);color:var(--gold-light);}
+  #replayDrop img{max-width:100%;max-height:110px;border-radius:4px;display:block;margin:0 auto 6px;}
+  .replay-select{
+    width:100%;
+    background:var(--panel-light);
+    color:var(--text);
+    border:1px solid #1e1a15;
+    border-radius:4px;
+    padding:7px 8px;
+    font-family:inherit;
+    font-size:13px;
+    margin-bottom:8px;
+    cursor:pointer;
+  }
+  .replay-select:focus{outline:1px solid var(--gold);}
+  #replayStages{list-style:none;}
+  #replayStages li{
+    font-size:12px;
+    color:var(--text-dim);
+    padding:4px 6px;
+    border-left:2px solid var(--panel-light);
+    margin-bottom:2px;
+    transition:all .2s;
+  }
+  #replayStages li.active{
+    color:var(--gold-light);
+    border-left-color:var(--gold);
+    background:rgba(201,162,39,.08);
+  }
+  #replayStages li.done{color:var(--text);border-left-color:#6a5c3a;}
+  #replayStatus{
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.8;
+    min-height:3em;
+  }
+  #replayStatus b{color:var(--gold-light);}
+  #replayMain{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  #replayCanvasWrap{
+    flex:1;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    padding:20px;
+    background:radial-gradient(ellipse at 50% 30%, #4a4136 0%, #2b2620 75%);
+  }
+  #replayCanvas{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    border:8px solid #5c4327;
+    background:#efe8da;
+    display:none;
+  }
+  #replayEmpty{color:var(--text-dim);font-style:italic;text-align:center;line-height:2.2;font-size:15px;}
+  #replayOrig{
+    position:absolute;
+    right:26px;
+    bottom:26px;
+    width:170px;
+    border:3px solid #5c4327;
+    border-radius:2px;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+    display:none;
+    cursor:pointer;
+    opacity:.92;
+  }
+  #replayBar{
+    background:var(--panel);
+    border-top:1px solid #1e1a15;
+    padding:10px 20px;
+    display:flex;
+    gap:14px;
+    align-items:center;
+    min-height:52px;
+  }
+  #replayCaption{flex:1;font-size:13px;color:var(--text);line-height:1.5;}
+  #replayCaption b{color:var(--gold-light);}
+  .pulse-dot{
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--gold);margin-right:6px;
+    animation:pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.25;}50%{opacity:1;}}
 </style>
 </head>
 <body>
@@ -445,6 +555,7 @@
   <div class="tabs">
     <button class="tab-btn active" id="tabStudio">🎨 画室</button>
     <button class="tab-btn" id="tabDecompose">🖼 拆解临摹</button>
+    <button class="tab-btn" id="tabReplay">🤖 AI 重演</button>
     <button class="tab-btn" id="tabAcademy">📜 学堂</button>
   </div>
 </header>
@@ -562,6 +673,74 @@
         <div class="desc" id="decoDesc"></div>
         <button class="action-btn" id="btnTrace">🎨 垫入画室临摹</button>
         <button class="action-btn" id="btnStepSave">💾 下载此图</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== AI 重演 ==================== -->
+  <div id="replay">
+    <div id="replaySide">
+      <div class="tool-section">
+        <h3>上传画作 · UPLOAD</h3>
+        <div id="replayDrop">📤 点击或拖入一张油画<br>
+          <span style="font-size:11px;">AI 会观察它，然后从空白画布<br>一笔一笔演示大师如何画出它</span>
+        </div>
+        <input type="file" id="replayFile" accept="image/*" style="display:none;">
+      </div>
+
+      <div class="tool-section">
+        <h3>执笔画师 · MODEL</h3>
+        <select class="replay-select" id="replayModel">
+          <option value="claude-fable-5">Fable 5 · 首席大师</option>
+          <option value="claude-opus-5">Opus 5 · 宫廷画师</option>
+          <option value="claude-sonnet-5" selected>Sonnet 5 · 工坊画师</option>
+          <option value="claude-haiku-4-5-20251001">Haiku 4.5 · 速写学徒</option>
+        </select>
+        <select class="replay-select" id="replayDetail">
+          <option value="fast">快速 · 约 130 笔</option>
+          <option value="standard" selected>标准 · 约 280 笔</option>
+          <option value="fine">精细 · 约 500 笔</option>
+        </select>
+        <div class="action-btns">
+          <button class="action-btn" id="btnReplayStart" disabled>🖌 开始重演</button>
+          <button class="action-btn danger" id="btnReplayStop" style="display:none;">⏹ 停止</button>
+        </div>
+        <p style="font-size:11px;line-height:1.7;color:var(--text-dim);margin-top:8px;">
+          走你本地 Claude Code 订阅额度。<br>需先在终端启动伴侣服务：<br>
+          <code style="color:var(--gold-light);">node server.mjs</code>
+        </p>
+      </div>
+
+      <div class="tool-section" id="replayStageSection" style="display:none;">
+        <h3>作画进程 · STAGES</h3>
+        <ul id="replayStages"></ul>
+      </div>
+
+      <div class="tool-section">
+        <h3>状态 · STATUS</h3>
+        <div id="replayStatus">待命。上传一张画开始。</div>
+      </div>
+
+      <div class="tool-section" id="replayCtrlSection" style="display:none;">
+        <h3>放映 · PLAYBACK</h3>
+        <label class="slider-label"><span>重演速度</span><span id="replaySpeedVal">×1</span></label>
+        <input type="range" id="replaySpeed" min="1" max="16" value="2">
+        <div class="action-btns">
+          <button class="action-btn" id="btnReplayAgain" disabled>🔁 重新放映</button>
+          <button class="action-btn" id="btnReplaySave" disabled>💾 保存画面 (PNG)</button>
+          <button class="action-btn" id="btnReplayTrace" disabled>🎨 垫入画室临摹</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="replayMain">
+      <div id="replayCanvasWrap">
+        <div id="replayEmpty">🤖<br>上传一张油画，选择一位 AI 画师<br>看它从有色底开始，一笔一笔重现整幅画<br><span style="font-size:12px;">（模型边思考边落笔，笔触实时流回画布）</span></div>
+        <canvas id="replayCanvas"></canvas>
+        <img id="replayOrig" title="点击隐藏/显示原作对照" alt="原作">
+      </div>
+      <div id="replayBar">
+        <div id="replayCaption">先启动伴侣服务，再上传画作。</div>
       </div>
     </div>
   </div>
@@ -1105,20 +1284,25 @@ canvasArea.addEventListener("pointermove",e=>{
 const studio = document.getElementById("studio");
 const academy = document.getElementById("academy");
 const decompose = document.getElementById("decompose");
+const replayView = document.getElementById("replay");
 const tabStudio = document.getElementById("tabStudio");
 const tabAcademy = document.getElementById("tabAcademy");
 const tabDecompose = document.getElementById("tabDecompose");
+const tabReplay = document.getElementById("tabReplay");
 function showView(name){
   studio.classList.toggle("hidden", name!=="studio");
   academy.classList.toggle("visible", name==="academy");
   decompose.classList.toggle("visible", name==="decompose");
+  replayView.classList.toggle("visible", name==="replay");
   tabStudio.classList.toggle("active", name==="studio");
   tabAcademy.classList.toggle("active", name==="academy");
   tabDecompose.classList.toggle("active", name==="decompose");
+  tabReplay.classList.toggle("active", name==="replay");
 }
 tabStudio.addEventListener("click",()=>showView("studio"));
 tabAcademy.addEventListener("click",()=>showView("academy"));
 tabDecompose.addEventListener("click",()=>showView("decompose"));
+tabReplay.addEventListener("click",()=>showView("replay"));
 
 /* ==================== 拆解临摹引擎 ==================== */
 const fileInput = document.getElementById("fileInput");
@@ -1423,6 +1607,413 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
   traceOverlay.src = "";
   traceSection.style.display = "none";
 });
+
+/* ==================== AI 重演引擎 ==================== */
+(function(){
+  const API_BASE = (location.port === "4370") ? "" : "http://127.0.0.1:4370";
+  const drop      = document.getElementById("replayDrop");
+  const fileIn    = document.getElementById("replayFile");
+  const selModel  = document.getElementById("replayModel");
+  const selDetail = document.getElementById("replayDetail");
+  const btnStart  = document.getElementById("btnReplayStart");
+  const btnStop   = document.getElementById("btnReplayStop");
+  const btnAgain  = document.getElementById("btnReplayAgain");
+  const btnSave   = document.getElementById("btnReplaySave");
+  const btnRTrace = document.getElementById("btnReplayTrace");
+  const speedIn   = document.getElementById("replaySpeed");
+  const speedVal  = document.getElementById("replaySpeedVal");
+  const stagesUl  = document.getElementById("replayStages");
+  const stageSec  = document.getElementById("replayStageSection");
+  const ctrlSec   = document.getElementById("replayCtrlSection");
+  const statusBox = document.getElementById("replayStatus");
+  const caption   = document.getElementById("replayCaption");
+  const rEmpty    = document.getElementById("replayEmpty");
+  const rCanvas   = document.getElementById("replayCanvas");
+  const rOrig     = document.getElementById("replayOrig");
+  const rctx      = rCanvas.getContext("2d");
+
+  let srcData = null;          // {dataURL, w, h}
+  let abortCtl = null;
+  let running = false;         // 正在接收 SSE
+  let allEvents = [];          // 完整事件流（stage / s），用于重新放映
+  let metaEvt = null;
+  let queue = [];              // 待画事件队列
+  let cur = null;              // 当前正在动画的笔触
+  let rafId = 0, lastTs = 0;
+  let paintedStrokes = 0, totalStrokes = 0;
+  let modelLabel = "";
+  let t0 = 0;
+
+  const MODEL_NAMES = {
+    "claude-fable-5":"Fable 5","claude-opus-5":"Opus 5",
+    "claude-sonnet-5":"Sonnet 5","claude-haiku-4-5-20251001":"Haiku 4.5"
+  };
+
+  function speedFactor(){ return speedIn.value/2; }
+  speedIn.addEventListener("input",()=>{ speedVal.textContent = "×"+speedFactor(); });
+  speedVal.textContent = "×"+speedFactor();
+
+  function setStatus(html){ statusBox.innerHTML = html; }
+  function setCaption(html){ caption.innerHTML = html; }
+
+  /* ---------- 上传 ---------- */
+  drop.addEventListener("click",()=>fileIn.click());
+  drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("dragover");});
+  drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
+  drop.addEventListener("drop",e=>{
+    e.preventDefault();drop.classList.remove("dragover");
+    if(e.dataTransfer.files[0]) loadReplayImage(e.dataTransfer.files[0]);
+  });
+  fileIn.addEventListener("change",e=>{ if(e.target.files[0]) loadReplayImage(e.target.files[0]); });
+
+  function loadReplayImage(file){
+    const img = new Image();
+    img.onload = ()=>{
+      URL.revokeObjectURL(img.src);
+      const MAX = 1000;
+      const sc = Math.min(1, MAX/Math.max(img.width,img.height));
+      const w = Math.max(1,Math.round(img.width*sc)), h = Math.max(1,Math.round(img.height*sc));
+      const c = makeCanvas(w,h);
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      srcData = { dataURL:c.toDataURL("image/jpeg",0.9), w, h };
+      drop.innerHTML = "";
+      const thumb = new Image();
+      thumb.src = srcData.dataURL;
+      drop.appendChild(thumb);
+      const p = document.createElement("div");
+      p.textContent = "已就绪，点击可更换";
+      p.style.fontSize = "11px";
+      drop.appendChild(p);
+      rOrig.src = srcData.dataURL;
+      btnStart.disabled = false;
+      setStatus(`画作已载入（${w}×${h}）。<br>选好画师后点「开始重演」。`);
+      setCaption("准备好了。AI 将观察这幅画，然后从有色底开始逐笔重现它。");
+    };
+    img.onerror = ()=>{ setStatus("⚠️ 这张图片读取失败，换一张试试。"); };
+    img.src = URL.createObjectURL(file);
+  }
+
+  /* ---------- 画布初始化与纹理 ---------- */
+  function initCanvas(bg){
+    rCanvas.width = srcData.w; rCanvas.height = srcData.h;
+    rCanvas.style.display = "block";
+    rEmpty.style.display = "none";
+    rOrig.style.display = "block";
+    rctx.fillStyle = bg || "#efe8da";
+    rctx.fillRect(0,0,rCanvas.width,rCanvas.height);
+    // 亚麻画布织纹（轻微，避免透出网格感）
+    rctx.save();
+    rctx.globalAlpha = 0.022;
+    for(let y=0;y<rCanvas.height;y+=4){
+      rctx.fillStyle = (y/4)%2 ? "#000" : "#fff";
+      rctx.fillRect(0,y,rCanvas.width,1);
+    }
+    rctx.restore();
+  }
+
+  rOrig.addEventListener("click",()=>{ rOrig.style.opacity = rOrig.style.opacity==="0.15" ? "0.92" : "0.15"; });
+
+  /* ---------- 笔触渲染 ---------- */
+  function prepStroke(s){
+    const size = Math.max(2, Math.min(200, +s.s || 12));
+    const opRaw = +s.o;
+    const op = Math.max(0.03, Math.min(1, isFinite(opRaw) ? opRaw : 0.85));
+    const rgb = hexToRgb(s.c || "#4e3320");
+    const b = s.b || "round";
+    const pts = (s.p||[]).map(p=>[+p[0],+p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1]));
+    if(pts.length===1) pts.push([pts[0][0]+size*0.4, pts[0][1]+size*0.4]);
+    // 累积长度
+    const cum=[0];
+    for(let i=1;i<pts.length;i++){
+      cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]));
+    }
+    // 笔毛
+    let bristles=[];
+    if(b==="round"||b==="flat"||b==="fan"){
+      const n = b==="fan" ? Math.max(9,Math.round(size/2.5)) : Math.max(6,Math.round(size/3)+3);
+      for(let i=0;i<n;i++){
+        const t = n===1?0:(i/(n-1))*2-1;
+        bristles.push({
+          off: t*(size/2)*(b==="fan"?1.5:1) + (Math.random()-0.5)*size*0.12,
+          w:  b==="fan" ? (0.8+Math.random()*1.2)
+             : b==="flat" ? size/n*1.75
+             : (size/n)*(2.0-Math.abs(t)*0.9),
+          a:  b==="fan" ? op*(0.25+Math.random()*0.4)
+             : op*(0.5+0.5*(1-Math.abs(t)))*(0.75+Math.random()*0.25),
+          col: jitterColor(rgb, b==="fan"?18:10),
+          skip: b==="fan" && Math.random()<0.25
+        });
+      }
+    }
+    return { b, rgb, size, op, pts, cum, len: cum[cum.length-1]||1, dist:0, bristles };
+  }
+
+  function pointAt(st, d){
+    const {pts,cum} = st;
+    if(d<=0) return pts[0];
+    if(d>=st.len) return pts[pts.length-1];
+    let i=1;
+    while(cum[i]<d) i++;
+    const t=(d-cum[i-1])/((cum[i]-cum[i-1])||1);
+    return [pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t, pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];
+  }
+
+  function drawSeg(st, x0,y0,x1,y1){
+    const dx=x1-x0, dy=y1-y0, dd=Math.hypot(dx,dy)||1;
+    const nx=-dy/dd, ny=dx/dd;
+    rctx.save();
+    rctx.lineCap = st.b==="flat"||st.b==="knife" ? "butt" : "round";
+    if(st.b==="knife"){
+      rctx.globalAlpha = Math.min(1, st.op*1.1);
+      rctx.strokeStyle = rgbStr(st.rgb,1);
+      rctx.lineWidth = st.size;
+      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
+      // 刀痕亮脊
+      const lite = st.rgb.map(v=>Math.min(255,v+34));
+      rctx.globalAlpha = st.op*0.5;
+      rctx.strokeStyle = rgbStr(lite,1);
+      rctx.lineWidth = Math.max(1.5, st.size/5);
+      rctx.beginPath();
+      rctx.moveTo(x0+nx*st.size*0.3, y0+ny*st.size*0.3);
+      rctx.lineTo(x1+nx*st.size*0.3, y1+ny*st.size*0.3);
+      rctx.stroke();
+    } else if(st.b==="glaze"){
+      rctx.globalAlpha = st.op*0.16;
+      rctx.strokeStyle = rgbStr(st.rgb,1);
+      rctx.lineWidth = st.size*1.6;
+      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
+    } else if(st.b==="blend"){
+      rctx.globalAlpha = 0.09;
+      rctx.strokeStyle = rgbStr(st.rgb,1);
+      rctx.lineWidth = st.size*1.4;
+      rctx.beginPath(); rctx.moveTo(x0,y0); rctx.lineTo(x1,y1); rctx.stroke();
+    } else {
+      for(const br of st.bristles){
+        if(br.skip) continue;
+        rctx.globalAlpha = Math.min(1, br.a);
+        rctx.strokeStyle = rgbStr(br.col,1);
+        rctx.lineWidth = Math.max(0.6, br.w);
+        rctx.beginPath();
+        rctx.moveTo(x0+nx*br.off, y0+ny*br.off);
+        rctx.lineTo(x1+nx*br.off, y1+ny*br.off);
+        rctx.stroke();
+      }
+    }
+    rctx.restore();
+  }
+
+  /* ---------- 动画循环 ---------- */
+  function pump(ts){
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(pump);
+    const dt = Math.min(0.08, (ts-lastTs)/1000 || 0.016);
+    lastTs = ts;
+    // 队列积压越多画得越快，跟上模型的思路
+    const backlog = queue.length;
+    const boost = running ? Math.max(1, backlog/20) : Math.max(1, backlog/60);
+    let adv = 320 * speedFactor() * boost * dt;
+
+    while(adv > 0.5){
+      if(!cur){
+        const next = queue.shift();
+        if(!next){ if(!running) stopPump(); return; }
+        if(next.t==="stage"){ onStagePainted(next); continue; }
+        cur = prepStroke(next);
+        continue;
+      }
+      const step = Math.max(2, cur.size/5);
+      const consume = Math.min(adv, cur.len - cur.dist);
+      const target = cur.dist + consume;
+      while(cur.dist < target){
+        const d2 = Math.min(target, cur.dist + step);
+        const [ax,ay] = pointAt(cur, cur.dist);
+        const [bx,by] = pointAt(cur, d2);
+        drawSeg(cur, ax,ay,bx,by);
+        cur.dist = d2;
+      }
+      adv -= Math.max(consume, 0.5);
+      if(cur.dist >= cur.len - 0.001){
+        paintedStrokes++;
+        updateProgress();
+        cur = null;
+      }
+    }
+  }
+  let bgTicker = 0; // 标签页在后台时 rAF 不触发，用定时器兜底推进
+  function startPump(){
+    if(!rafId){ lastTs = performance.now(); rafId = requestAnimationFrame(pump); }
+    if(!bgTicker){
+      bgTicker = setInterval(()=>{
+        if(performance.now() - lastTs > 400) pump(performance.now());
+      }, 200);
+    }
+  }
+  function stopPump(){
+    if(rafId){ cancelAnimationFrame(rafId); rafId=0; }
+    if(bgTicker){ clearInterval(bgTicker); bgTicker=0; }
+  }
+
+  /* ---------- 阶段与进度 UI ---------- */
+  function addStageLi(name){
+    const li = document.createElement("li");
+    li.textContent = name;
+    stagesUl.appendChild(li);
+    return li;
+  }
+  function onStagePainted(ev){
+    [...stagesUl.children].forEach(li=>{
+      if(li.dataset.name===ev.name){ li.classList.add("active"); li.classList.remove("done"); }
+      else if(li.classList.contains("active")){ li.classList.remove("active"); li.classList.add("done"); }
+    });
+    setCaption(`<b>${ev.name}</b>　${ev.note||""}`);
+  }
+  function registerStage(ev){
+    stageSec.style.display = "block";
+    const li = addStageLi(ev.name);
+    li.dataset.name = ev.name;
+  }
+  function updateProgress(){
+    const el = t0 ? Math.round((performance.now()-t0)/1000) : 0;
+    setStatus(`<b>${modelLabel}</b> 执笔中<br>已落笔 ${paintedStrokes} / 收到 ${totalStrokes} 笔 · ${el}s${running?'<br><span class="pulse-dot"></span>模型仍在构思后续笔触…':""}`);
+  }
+
+  /* ---------- 开始 / 停止 ---------- */
+  btnStart.addEventListener("click", startReplay);
+  btnStop.addEventListener("click", ()=>{ if(abortCtl) abortCtl.abort(); });
+
+  async function startReplay(){
+    if(!srcData || running) return;
+    running = true;
+    allEvents = []; metaEvt = null; queue = []; cur = null;
+    paintedStrokes = 0; totalStrokes = 0;
+    stagesUl.innerHTML = ""; stageSec.style.display = "none";
+    ctrlSec.style.display = "block";
+    btnStart.disabled = true; btnStop.style.display = "block";
+    btnAgain.disabled = true; btnSave.disabled = true; btnRTrace.disabled = true;
+    modelLabel = MODEL_NAMES[selModel.value] || selModel.value;
+    t0 = performance.now();
+    initCanvas("#efe8da");
+    setStatus(`连接本地伴侣服务…`);
+    setCaption(`<span class="pulse-dot"></span>正在唤醒 <b>${modelLabel}</b>（走你的本地订阅额度）…`);
+
+    abortCtl = new AbortController();
+    let resp;
+    try{
+      resp = await fetch(`${API_BASE}/api/replay`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ image:srcData.dataURL, model:selModel.value, detail:selDetail.value, w:srcData.w, h:srcData.h }),
+        signal: abortCtl.signal,
+      });
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    }catch(err){
+      finishRun();
+      if(err.name==="AbortError"){ setStatus("已取消。"); return; }
+      setStatus(`⚠️ 连不上伴侣服务。<br>请先在项目目录运行：<br><b>node server.mjs</b><br><span style="font-size:11px;">(${err.message})</span>`);
+      setCaption(`⚠️ 未检测到本地伴侣服务（127.0.0.1:4370）。在终端运行 <b>node server.mjs</b> 后重试。`);
+      return;
+    }
+
+    startPump();
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    try{
+      while(true){
+        const {done, value} = await reader.read();
+        if(done) break;
+        buf += dec.decode(value,{stream:true});
+        let idx;
+        while((idx = buf.indexOf("\n\n")) >= 0){
+          const block = buf.slice(0,idx); buf = buf.slice(idx+2);
+          for(const ln of block.split("\n")){
+            if(ln.startsWith("data: ")) handleEvent(JSON.parse(ln.slice(6)));
+          }
+        }
+      }
+    }catch(err){
+      if(err.name!=="AbortError"){ setStatus(`⚠️ 连接中断：${err.message}`); }
+    }
+    finishRun();
+  }
+
+  function handleEvent(ev){
+    switch(ev.t){
+      case "sys":
+        if(ev.phase==="connected") setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 已就位，正在打开画作…`);
+        if(ev.phase==="looking")  setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详这幅画，构思落笔顺序…`);
+        break;
+      case "meta":
+        metaEvt = ev;
+        initCanvas(ev.bg);
+        if(ev.title) setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 判定此作为《${ev.title}》，开始铺有色底…`);
+        break;
+      case "stage":
+        allEvents.push(ev); registerStage(ev); queue.push(ev);
+        break;
+      case "s":
+        allEvents.push(ev); queue.push(ev); totalStrokes++;
+        updateProgress();
+        break;
+      case "done":
+        setCaption(`✅ 模型落笔完毕（${ev.strokes} 笔，用时 ${ev.seconds}s），画布正在追赶播放…`);
+        break;
+      case "error":
+        setStatus(`⚠️ ${ev.msg}`);
+        break;
+      case "end": break;
+    }
+  }
+
+  function finishRun(){
+    running = false;
+    btnStop.style.display = "none";
+    btnStart.disabled = !srcData;
+    if(abortCtl){ abortCtl = null; }
+    if(totalStrokes>0){
+      btnAgain.disabled = false; btnSave.disabled = false; btnRTrace.disabled = false;
+      updateProgress();
+    }
+  }
+
+  /* ---------- 放映控制 ---------- */
+  btnAgain.addEventListener("click",()=>{
+    if(!allEvents.length || running) return;
+    queue = [...allEvents]; cur = null;
+    paintedStrokes = 0;
+    stagesUl.innerHTML = "";
+    allEvents.filter(e=>e.t==="stage").forEach(registerStage);
+    t0 = performance.now();
+    initCanvas(metaEvt?.bg);
+    startPump();
+  });
+  btnSave.addEventListener("click",()=>{
+    const a = document.createElement("a");
+    a.download = `AI重演_${modelLabel||"oil"}.png`;
+    a.href = rCanvas.toDataURL("image/png");
+    a.click();
+  });
+  btnRTrace.addEventListener("click",()=>{
+    traceOverlay.src = rCanvas.toDataURL("image/png");
+    traceOverlay.style.display = "block";
+    traceSection.style.display = "block";
+    showView("studio");
+  });
+
+  /* ---------- 进入页签时探测服务 ---------- */
+  tabReplay.addEventListener("click", async ()=>{
+    if(running || totalStrokes>0) return;
+    try{
+      const ctl = new AbortController();
+      const tid = setTimeout(()=>ctl.abort(), 1500);
+      await fetch(`${API_BASE}/api/health`,{signal:ctl.signal});
+      clearTimeout(tid);
+      setCaption(`✅ 本地伴侣服务已连接（127.0.0.1:4370）。上传画作，选一位 AI 画师开始。`);
+    }catch{
+      setCaption(`⚠️ 未检测到伴侣服务。请在项目目录终端运行 <b>node server.mjs</b>（走你的 Claude Code 订阅，图片不出本机）。`);
+    }
+  });
+})();
 </script>
 </body>
 </html>
