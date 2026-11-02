@@ -473,6 +473,9 @@
     cursor:pointer;
   }
   .replay-select:focus{outline:1px solid var(--gold);}
+  input.replay-select{cursor:text;box-sizing:border-box;}
+  #replayModelTag{font-size:13px;color:var(--gold-light);margin-bottom:8px;}
+  #replayKeyRemember{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin:-2px 0 10px;cursor:pointer;}
   #replayStages{list-style:none;}
   #replayStages li{
     font-size:12px;
@@ -741,12 +744,9 @@
 
       <div class="tool-section">
         <h3>执笔画师 · MODEL</h3>
-        <select class="replay-select" id="replayModel">
-          <option value="claude-fable-5">Fable 5 · 首席大师</option>
-          <option value="claude-opus-5">Opus 5 · 宫廷画师</option>
-          <option value="claude-sonnet-5" selected>Sonnet 5 · 工坊画师</option>
-          <option value="claude-haiku-4-5-20251001">Haiku 4.5 · 速写学徒</option>
-        </select>
+        <div id="replayModelTag">Claude Opus 5.5 · 思考强度 medium</div>
+        <input type="password" class="replay-select" id="replayKey" placeholder="粘贴你的 Anthropic API Key（sk-ant-…）" autocomplete="off" spellcheck="false">
+        <label id="replayKeyRemember"><input type="checkbox" id="replayKeySave"> 在本浏览器记住 Key</label>
         <select class="replay-select" id="replayDetail">
           <option value="fast">快速 · 约 130 笔</option>
           <option value="standard" selected>标准 · 约 280 笔</option>
@@ -757,8 +757,8 @@
           <button class="action-btn danger" id="btnReplayStop" style="display:none;">⏹ 停止</button>
         </div>
         <p style="font-size:11px;line-height:1.7;color:var(--text-dim);margin-top:8px;">
-          走你本地 Claude Code 订阅额度。<br>需先在终端启动伴侣服务：<br>
-          <code style="color:var(--gold-light);">node server.mjs</code>
+          网页直接调用 Anthropic API，按你的 Key 计费。<br>Key 只发往 api.anthropic.com；不勾选「记住」则关掉页面即忘。<br>
+          申请 Key：<a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener" style="color:var(--gold-light);">platform.claude.com</a>
         </p>
       </div>
 
@@ -791,7 +791,7 @@
         <img id="replayOrig" title="点击隐藏/显示原作对照" alt="原作">
       </div>
       <div id="replayBar">
-        <div id="replayCaption">先启动伴侣服务，再上传画作。</div>
+        <div id="replayCaption">填好 API Key，再上传画作。</div>
       </div>
     </div>
   </div>
@@ -1673,10 +1673,15 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
 
 /* ==================== AI 重演引擎 ==================== */
 (function(){
-  const API_BASE = (location.port === "4370") ? "" : "http://127.0.0.1:4370";
+  const MODEL       = "claude-opus-5-5";
+  const MODEL_LABEL = "Opus 5.5";
+  const SDK_URL     = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.135.0/+esm";
+  const KEY_STORE   = "atelier.anthropicKey";
+  const DETAIL = { fast:130, standard:280, fine:500 };
   const drop      = document.getElementById("replayDrop");
   const fileIn    = document.getElementById("replayFile");
-  const selModel  = document.getElementById("replayModel");
+  const keyIn     = document.getElementById("replayKey");
+  const keySave   = document.getElementById("replayKeySave");
   const selDetail = document.getElementById("replayDetail");
   const btnStart  = document.getElementById("btnReplayStart");
   const btnStop   = document.getElementById("btnReplayStop");
@@ -1709,10 +1714,74 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
   let modelLabel = "";
   let t0 = 0;
 
-  const MODEL_NAMES = {
-    "claude-fable-5":"Fable 5","claude-opus-5":"Opus 5",
-    "claude-sonnet-5":"Sonnet 5","claude-haiku-4-5-20251001":"Haiku 4.5"
-  };
+  /* ---------- API Key：默认只存在内存，勾选后才写进 localStorage ---------- */
+  try{
+    const saved = localStorage.getItem(KEY_STORE);
+    if(saved){ keyIn.value = saved; keySave.checked = true; }
+  }catch{}
+  function persistKey(){
+    try{
+      if(keySave.checked && keyIn.value.trim()) localStorage.setItem(KEY_STORE, keyIn.value.trim());
+      else localStorage.removeItem(KEY_STORE);
+    }catch{}
+  }
+  keyIn.addEventListener("change", persistKey);
+  keySave.addEventListener("change", persistKey);
+
+  /* ---------- Anthropic SDK：首次用到时从 CDN 动态载入 ---------- */
+  let sdkPromise = null;
+  function loadSDK(){
+    if(!sdkPromise) sdkPromise = import(SDK_URL).then(m=>m.default).catch(err=>{ sdkPromise = null; throw err; });
+    return sdkPromise;
+  }
+
+  function buildPrompt(W, H, nStrokes){
+    return `You are a classical European oil painting master demonstrating, stroke by stroke, how the attached painting would be painted from a blank canvas, following the traditional atelier "seven step" method.
+
+Look carefully at the attached image first. Then output ONLY a stroke script in NDJSON format (one JSON object per line, no markdown fences, no commentary, no blank lines). The canvas coordinate system is ${W} wide and ${H} tall (x: 0..${W}, y: 0..${H}), matching the image exactly.
+
+Line types:
+1. First line (metadata):
+{"t":"meta","bg":"#RRGGBB","title":"畫作標題(中文)"}
+   bg = the toned-ground color (a muted earth tone that suits this painting, e.g. warm umber/ochre).
+2. Stage announcement (before each group of strokes), in this exact order with these names:
+{"t":"stage","name":"① 铺有色底","note":"一句话说明这阶段在做什么(中文)"}
+   Stages: ① 铺有色底 → ② 起形 → ③ 单色底层画 → ④ 铺大色块 → ⑤ 塑造 → ⑥ 细节与高光 → ⑦ 罩染统一
+3. Stroke:
+{"t":"s","b":"flat","c":"#RRGGBB","s":40,"o":0.55,"p":[[x,y],[x,y],...]}
+   b = brush type (a full Renaissance atelier kit):
+     "wash"    huge thin soft-edged washes — toned ground, sky, background only
+     "round"   soft round sable — contour lines, small forms, final details
+     "flat"    flat bristle brush — blocking in planes of color
+     "fan"     fan brush — foliage, hair strands, scattered texture
+     "knife"   palette knife impasto — thick FINAL highlights only, sparingly
+     "glaze"   transparent glaze — deepening shadows, unifying color regions
+     "sfumato" Leonardo's smoky blending — flesh transitions, soft edges between light and shadow; use generously on figures and faces
+     "scumble" dry-brush broken texture — rocks, fabric, clouds, mist
+     "blend"   blender — softening an already-painted edge
+   c = paint color hex, s = brush size in canvas px (80-160 wash only; 25-60 blocking; 10-25 modeling; 3-10 details), o = opacity 0.05-1, p = path polyline of 2-12 points, gently curved and natural.
+4. Last line: {"t":"end"}
+
+Painting rules — follow them like a real Renaissance master:
+- Total strokes: about ${nStrokes} (within ±15%). Budget roughly: stage① 4-8 wash strokes covering all, ② ~10% thin round lines, ③ ~15% flat/round monochrome + a few sfumato, ④ ~25% flat blocks, ⑤ ~25% modeling with flat/round/sfumato/scumble, ⑥ ~20% small round + a few knife highlights, ⑦ 3-6 large glaze strokes.
+- STROKES FOLLOW THE FORM: curve each path along anatomy, drapery folds, and contours of what you are painting. Short overlapping strokes (each path spanning less than 1/3 of the canvas) build form; NEVER drag one long wide band across a whole figure.
+- Build flesh in soft layers: warm halftones at o≈0.45-0.65, then sfumato strokes across every light-shadow boundary, tiny bright highlights last.
+- Prefer opacity 0.4-0.7 during block-in and modeling so layers blend optically; reserve o>0.85 for stage ⑥ highlights only.
+- Work large → small, dark → light, thin → thick (fat over lean). Background before foreground.
+- Each stroke's color must match the LOCAL color of the original painting at that stroke's location; stage ② uses thin dark burnt umber (#3a2a1a-ish) lines; stage ③ is monochrome browns establishing values.
+- COVER THE WHOLE CANVAS: by the end of stage ④ every region (background included) must be painted over — no bare ground showing anywhere. Then refine on top.
+- Coordinates are integers. Keep every JSON object on a single line. Output nothing except NDJSON lines.`;
+  }
+
+  function apiErrorText(Anthropic, err){
+    if(err instanceof Anthropic.AuthenticationError) return "API Key 无效或已失效，请检查后重填。";
+    if(err instanceof Anthropic.PermissionDeniedError) return "这个 Key 没有调用该模型的权限。";
+    if(err instanceof Anthropic.RateLimitError) return "请求太频繁或额度已用完（429），稍后再试。";
+    if(err instanceof Anthropic.BadRequestError) return `请求被拒（400）：${err.message}`;
+    if(err instanceof Anthropic.APIConnectionError) return `连不上 api.anthropic.com：${err.message}`;
+    if(err instanceof Anthropic.APIError) return `API 错误 ${err.status??""}：${err.message}`;
+    return err.message || String(err);
+  }
 
   function speedFactor(){ return speedIn.value/2; }
   speedIn.addEventListener("input",()=>{ speedVal.textContent = "×"+speedFactor(); });
@@ -1753,7 +1822,7 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
       drop.appendChild(p);
       rOrig.src = srcData.dataURL;
       btnStart.disabled = false;
-      setStatus(`画作已载入（${w}×${h}）。<br>选好画师后点「开始重演」。`);
+      setStatus(`画作已载入（${w}×${h}）。<br>选好精细度后点「开始重演」。`);
       setCaption("准备好了。AI 将观察这幅画，然后从有色底开始逐笔重现它。");
     };
     img.onerror = ()=>{ setStatus("⚠️ 这张图片读取失败，换一张试试。"); };
@@ -2005,6 +2074,13 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
 
   async function startReplay(){
     if(!srcData || running) return;
+    const apiKey = keyIn.value.trim();
+    if(!apiKey){
+      setStatus("⚠️ 先在上方填入你的 Anthropic API Key。");
+      keyIn.focus();
+      return;
+    }
+    persistKey();
     running = true;
     allEvents = []; metaEvt = null; queue = []; cur = null;
     paintedStrokes = 0; totalStrokes = 0; stageNo = 0;
@@ -2012,68 +2088,81 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
     ctrlSec.style.display = "block";
     btnStart.disabled = true; btnStop.style.display = "block";
     btnAgain.disabled = true; btnSave.disabled = true; btnRTrace.disabled = true;
-    modelLabel = MODEL_NAMES[selModel.value] || selModel.value;
+    modelLabel = MODEL_LABEL;
     t0 = performance.now();
     initCanvas("#efe8da");
-    setStatus(`连接本地伴侣服务…`);
-    setCaption(`<span class="pulse-dot"></span>正在唤醒 <b>${modelLabel}</b>（走你的本地订阅额度）…`);
+    setStatus(`<span class="pulse-dot"></span>载入 Anthropic SDK…`);
+    setCaption(`<span class="pulse-dot"></span>正在唤醒 <b>${modelLabel}</b>…`);
 
     abortCtl = new AbortController();
-    let resp;
+    let Anthropic;
     try{
-      resp = await fetch(`${API_BASE}/api/replay`,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ image:srcData.dataURL, model:selModel.value, detail:selDetail.value, w:srcData.w, h:srcData.h }),
-        signal: abortCtl.signal,
-      });
-      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      Anthropic = await loadSDK();
     }catch(err){
       finishRun();
-      if(err.name==="AbortError"){ setStatus("已取消。"); return; }
-      setStatus(`⚠️ 连不上伴侣服务。<br>请先在项目目录运行：<br><b>node server.mjs</b><br><span style="font-size:11px;">(${err.message})</span>`);
-      setCaption(`⚠️ 未检测到本地伴侣服务（127.0.0.1:4370）。在终端运行 <b>node server.mjs</b> 后重试。`);
+      setStatus(`⚠️ Anthropic SDK 载入失败（需要联网访问 cdn.jsdelivr.net）。<br><span style="font-size:11px;">${err.message}</span>`);
       return;
     }
+    if(abortCtl.signal.aborted){ finishRun(); setStatus("已取消。"); return; }
 
+    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser:true });
+    const stream = client.beta.messages.stream({
+      model: MODEL,
+      max_tokens: 64000,
+      thinking: { type:"adaptive" },
+      output_config: { effort:"medium" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      messages: [{
+        role: "user",
+        content: [
+          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:srcData.dataURL.split(",")[1] } },
+          { type:"text", text: buildPrompt(srcData.w, srcData.h, DETAIL[selDetail.value] || DETAIL.standard) },
+        ],
+      }],
+    });
+    abortCtl.signal.addEventListener("abort", ()=>stream.abort());
+
+    setStatus(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详画作、构思全部笔触…<br><span style="font-size:11px;">思考阶段约需 1~3 分钟，请稍候</span>`);
+    setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详这幅画，构思落笔顺序…`);
     startPump();
-    const reader = resp.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
+
+    // 模型输出的 NDJSON 笔触脚本：按行切分，逐条交给画布
+    let textBuf = "", sent = 0;
+    const emitLine = (line)=>{
+      line = line.trim();
+      if(!line || line.startsWith("```")) return;
+      let obj;
+      try{ obj = JSON.parse(line); }catch{ return; }
+      if(!obj || !["meta","stage","s","end"].includes(obj.t)) return;
+      if(obj.t==="s") sent++;
+      handleEvent(obj);
+    };
     try{
-      while(true){
-        const {done, value} = await reader.read();
-        if(done) break;
-        buf += dec.decode(value,{stream:true});
-        let idx;
-        while((idx = buf.indexOf("\n\n")) >= 0){
-          const block = buf.slice(0,idx); buf = buf.slice(idx+2);
-          for(const ln of block.split("\n")){
-            if(ln.startsWith("data: ")) handleEvent(JSON.parse(ln.slice(6)));
+      for await (const ev of stream){
+        if(ev.type==="content_block_delta" && ev.delta.type==="text_delta"){
+          textBuf += ev.delta.text;
+          let nl;
+          while((nl = textBuf.indexOf("\n")) >= 0){
+            emitLine(textBuf.slice(0,nl));
+            textBuf = textBuf.slice(nl+1);
           }
         }
       }
+      emitLine(textBuf);
+      const msg = await stream.finalMessage();
+      if(msg.stop_reason==="refusal") setStatus(`⚠️ 模型拒绝了这次请求${msg.stop_details?.explanation?`：${msg.stop_details.explanation}`:""}`);
+      else if(msg.stop_reason==="max_tokens") setStatus(`⚠️ 输出达到长度上限，已画出 ${sent} 笔。可改用「快速」档重试。`);
+      handleEvent({ t:"done", strokes:sent, seconds:Math.round((performance.now()-t0)/1000) });
     }catch(err){
-      if(err.name!=="AbortError"){ setStatus(`⚠️ 连接中断：${err.message}`); }
+      if(err instanceof Anthropic.APIUserAbortError || abortCtl?.signal.aborted){ setStatus("已取消。"); setCaption("已停止。"); }
+      else { setStatus(`⚠️ ${apiErrorText(Anthropic, err)}`); setCaption("⚠️ 这次没画成，原因见左侧「状态」。"); }
     }
     finishRun();
   }
 
   function handleEvent(ev){
     switch(ev.t){
-      case "sys":
-        if(ev.phase==="starting"){
-          setStatus(`✅ 已连接伴侣服务<br><span class="pulse-dot"></span>正在唤醒 <b>${modelLabel}</b>…`);
-        }
-        if(ev.phase==="connected"){
-          setStatus(`✅ <b>${modelLabel}</b> 已就位<br><span class="pulse-dot"></span>正在打开画作…`);
-          setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 已就位，正在打开画作…`);
-        }
-        if(ev.phase==="looking"){
-          setStatus(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详画作、构思全部笔触…<br><span style="font-size:11px;">深思模型（如 Fable 5）此阶段约需 1~3 分钟，请稍候</span>`);
-          setCaption(`<span class="pulse-dot"></span><b>${modelLabel}</b> 正在端详这幅画，构思落笔顺序…`);
-        }
-        break;
       case "meta":
         metaEvt = ev;
         initCanvas(ev.bg);
@@ -2146,18 +2235,12 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
     return `injected ${evts.length} events`;
   };
 
-  /* ---------- 进入页签时探测服务 ---------- */
-  tabReplay.addEventListener("click", async ()=>{
+  /* ---------- 进入页签时提示 Key 状态 ---------- */
+  tabReplay.addEventListener("click", ()=>{
     if(running || totalStrokes>0) return;
-    try{
-      const ctl = new AbortController();
-      const tid = setTimeout(()=>ctl.abort(), 1500);
-      await fetch(`${API_BASE}/api/health`,{signal:ctl.signal});
-      clearTimeout(tid);
-      setCaption(`✅ 本地伴侣服务已连接（127.0.0.1:4370）。上传画作，选一位 AI 画师开始。`);
-    }catch{
-      setCaption(`⚠️ 未检测到伴侣服务。请在项目目录终端运行 <b>node server.mjs</b>（走你的 Claude Code 订阅，图片不出本机）。`);
-    }
+    setCaption(keyIn.value.trim()
+      ? `✅ API Key 已填好。上传画作，点「开始重演」。`
+      : `先在左侧填入你的 Anthropic API Key，再上传画作。`);
   });
 })();
 </script>

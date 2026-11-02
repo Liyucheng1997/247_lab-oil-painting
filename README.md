@@ -6,14 +6,9 @@
 
 ## 使用
 
-- 3D 画室 / 画室 / 拆解临摹 / 学堂：无需安装任何东西，直接用浏览器打开 `index.html` 即可（推荐 Chrome / Edge）。3D 画室需要联网，从 jsDelivr 载入 Three.js。
-- 🤖 AI 重演：需要本机装有 [Claude Code](https://claude.com/claude-code)（已登录，走你自己的订阅额度）和 Node.js，然后：
-
-```bash
-node server.mjs
-```
-
-浏览器打开 http://127.0.0.1:4370 ，进入「🤖 AI 重演」页签。
+- 无需安装任何东西，直接用浏览器打开 `index.html` 即可（推荐 Chrome / Edge）。3D 画室和 AI 重演需要联网，从 jsDelivr 载入 Three.js 与 Anthropic SDK。
+- 🤖 AI 重演：在页签左侧填入你自己的 [Anthropic API Key](https://platform.claude.com/settings/keys)，按你的 Key 计费。
+- 也可以用 `node server.mjs` 起一个本地静态服务，然后打开 http://127.0.0.1:4370 。
 
 ## 功能
 
@@ -48,12 +43,12 @@ node server.mjs
 并从画中聚类提取 8 色「画中调色盘」（映射到最接近的大师颜料名，可一键设为画笔颜色）。任意步骤图可半透明垫入画室临摹（可调透明度），也可下载。
 
 ### 🤖 AI 重演
-上传一张油画，选择一位 AI 画师（Fable 5 / Opus 5 / Sonnet 5 / Haiku 4.5），模型会真的「看」这幅画，然后按古典七步作画法（有色底 → 起形 → 单色底层 → 铺大色块 → 塑造 → 细节高光 → 罩染）输出一笔一笔的笔触脚本，网页端用油画笔刷引擎实时动画重演——你能看着一块空白画布逐渐长成这幅画。
+上传一张油画，由 Claude Opus 5.5（思考强度 medium）执笔，模型会真的「看」这幅画，然后按古典七步作画法（有色底 → 起形 → 单色底层 → 铺大色块 → 塑造 → 细节高光 → 罩染）输出一笔一笔的笔触脚本，网页端用油画笔刷引擎实时动画重演——你能看着一块空白画布逐渐长成这幅画。
 
 - 笔触由模型流式生成，边思考边落笔
 - 可调重演速度、随时停止、完成后可重新放映
 - 成品可保存 PNG，或半透明垫入画室临摹
-- 全部计算走本地 Claude Code CLI 与你自己的订阅额度，图片不经过任何第三方服务器
+- 网页直接调用 Anthropic API（官方 SDK），图片和 Key 只发往 api.anthropic.com；Key 默认只存在内存，勾选「记住」才存进浏览器 localStorage
 
 ### 📜 学堂
 写给零基础小白的完整教程：装备清单与省钱方案、古典七步作画法、技法百科（蛋彩画/坦培拉、古典多层罩染、sfumato、直接画法 Alla Prima、厚涂 Impasto 等）、调色入门、以及按月推进的「达·芬奇之路」学习路线。
@@ -62,4 +57,4 @@ node server.mjs
 
 纯 HTML + CSS + 原生 JavaScript，无构建工具。3D 画室（`studio3d.js`）用 Three.js r170（importmap 从 jsDelivr 载入），场景全部程序化建模、贴图由 Canvas 生成，无外部模型或图片资源；画布是颜色 / 凹凸 / 粗糙度三张 CanvasTexture，调色板颜料层是可直接读写的像素数组。2D 笔刷引擎基于 Canvas 2D（逐笔毛描绘、颜料耗尽模拟、像素级揉合），拆解引擎基于 Sobel 边缘检测与 k-means 颜色聚类。
 
-AI 重演的伴侣服务 `server.mjs` 同样零依赖（仅 Node 内置模块）：它以 `claude -p --output-format stream-json` 无头模式调用本地 Claude Code CLI，把模型输出的 NDJSON 笔触脚本经 SSE 流式转发给网页；模型切换即传不同 `--model` 参数。
+AI 重演在浏览器里用官方 `@anthropic-ai/sdk`（从 jsDelivr 动态载入）流式调用 `claude-opus-5-5`（adaptive thinking，effort medium，开启服务端拒答回退 `fallbacks: "default"`），把模型输出的 NDJSON 笔触脚本逐行交给笔刷引擎实时重演。`server.mjs` 只是可选的零依赖静态服务。
