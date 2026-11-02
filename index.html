@@ -545,6 +545,52 @@
     animation:pulse 1.2s ease-in-out infinite;
   }
   @keyframes pulse{0%,100%{opacity:.25;}50%{opacity:1;}}
+  /* ============ 3D 画室 ============ */
+  #atelier3d{display:none;flex:1;overflow:hidden;}
+  #atelier3d.visible{display:flex;}
+  #a3Side{width:270px;background:var(--panel);border-right:1px solid #1e1a15;padding:14px;overflow-y:auto;flex-shrink:0;}
+  #a3Stages{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:3px 6px;margin-bottom:10px;}
+  #a3Stages li{font-size:12px;color:var(--text-dim);cursor:pointer;padding:3px 4px;border-radius:3px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;}
+  #a3Stages li:hover{color:var(--gold-light);background:rgba(201,162,39,.08);}
+  #a3Stages li .n{display:inline-flex;width:17px;height:17px;border-radius:50%;border:1px solid var(--panel-light);font-size:10px;align-items:center;justify-content:center;flex-shrink:0;}
+  #a3Stages li.done .n{background:#5d7a3c;border-color:#5d7a3c;color:#fff;}
+  #a3Stages li.cur{color:#1e1a15;background:var(--gold);}
+  #a3Stages li.cur .n{border-color:#1e1a15;}
+  #a3StageCard{background:rgba(0,0,0,.18);border:1px solid var(--panel-light);border-radius:4px;padding:10px;}
+  #a3StageCard p{font-size:12.5px;line-height:1.65;color:var(--text);margin:6px 0 8px;}
+  .a3-stage-title{color:var(--gold-light);font-size:14px;}
+  .a3-stage-title span{display:block;font-size:11px;color:var(--text-dim);font-style:italic;}
+  .a3-preset{font-size:11px;color:var(--gold);margin-bottom:8px;}
+  .a3-grid1{display:flex;flex-direction:column;gap:6px;}
+  .a3-grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .a3-nav{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
+  .a3-nav .action-btn:disabled{opacity:.35;cursor:default;}
+  .a3-note{font-size:11px;color:var(--text-dim);margin-top:4px;}
+  .a3-input{width:100%;margin-bottom:6px;padding:6px 8px;background:var(--panel-light);border:1px solid var(--panel-light);color:var(--cream);font-family:inherit;border-radius:3px;}
+  #atelier3d .action-btn{font-size:12px;padding:7px 6px;}
+  #atelier3d .action-btn.active{border-color:var(--gold);color:var(--gold-light);}
+  #a3Tubes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;}
+  .a3-tube{display:flex;align-items:center;gap:4px;background:var(--panel-light);border:1px solid transparent;color:var(--text);font-family:inherit;font-size:11px;padding:4px;border-radius:3px;cursor:pointer;white-space:nowrap;overflow:hidden;}
+  .a3-tube:hover{border-color:var(--gold);}
+  .a3-tube i{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.5);}
+  #a3View{flex:1;position:relative;overflow:hidden;background:#1a1612;}
+  #a3Canvas{display:block;width:100%;height:100%;touch-action:none;}
+  #a3Modes{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;}
+  #a3Modes button{background:rgba(30,26,21,.82);border:1px solid var(--panel-light);color:var(--text);padding:6px 14px;border-radius:16px;cursor:pointer;font-family:inherit;font-size:13px;backdrop-filter:blur(4px);}
+  #a3Modes button:hover{border-color:var(--gold);}
+  #a3Modes button.active{background:var(--gold);color:#1e1a15;border-color:var(--gold);}
+  #a3Modes kbd{font-family:inherit;font-size:10px;opacity:.6;margin-left:2px;}
+  #a3Load{position:absolute;right:14px;top:12px;display:flex;align-items:center;gap:10px;background:rgba(30,26,21,.82);border:1px solid var(--panel-light);border-radius:6px;padding:7px 12px;z-index:5;font-size:12px;min-width:200px;}
+  #a3LoadSw{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);flex-shrink:0;box-shadow:inset 0 -3px 6px rgba(0,0,0,.3);}
+  #a3LoadSw.empty{border-style:dashed;}
+  #a3LoadBar{height:5px;background:#2a241d;border-radius:3px;margin-top:5px;overflow:hidden;}
+  #a3LoadBar i{display:block;height:100%;width:0;transition:width .15s;}
+  #a3Tip{position:absolute;display:none;pointer-events:none;background:#1e1a15;color:var(--cream);border:1px solid var(--gold);font-size:12px;padding:3px 9px;border-radius:3px;z-index:6;white-space:nowrap;}
+  #a3Hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(30,26,21,.82);color:var(--text-dim);font-size:12px;padding:5px 14px;border-radius:14px;pointer-events:none;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;}
+  #a3Toast{position:absolute;top:58px;left:50%;transform:translate(-50%,-6px);background:rgba(30,26,21,.92);border:1px solid var(--gold);color:var(--cream);font-size:13px;padding:7px 16px;border-radius:4px;opacity:0;transition:all .25s;pointer-events:none;z-index:6;}
+  #a3Toast.show{opacity:1;transform:translate(-50%,0);}
+  #a3Toast b{color:var(--gold-light);}
+  #a3Loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:15px;background:#1a1612;z-index:7;text-align:center;padding:30px;line-height:1.8;}
 </style>
 </head>
 <body>
@@ -553,7 +599,8 @@
   <h1>欧洲油画工坊</h1>
   <span class="subtitle">Atelier — 在这里成为你自己的达·芬奇</span>
   <div class="tabs">
-    <button class="tab-btn active" id="tabStudio">🎨 画室</button>
+    <button class="tab-btn active" id="tabAtelier3d">🏛 3D 画室</button>
+    <button class="tab-btn" id="tabStudio">🎨 画室</button>
     <button class="tab-btn" id="tabDecompose">🖼 拆解临摹</button>
     <button class="tab-btn" id="tabReplay">🤖 AI 重演</button>
     <button class="tab-btn" id="tabAcademy">📜 学堂</button>
@@ -561,8 +608,11 @@
 </header>
 
 <main>
+  <!-- ==================== 3D 画室（studio3d.js 渲染） ==================== -->
+  <div id="atelier3d" class="visible"></div>
+
   <!-- ==================== 画室 ==================== -->
-  <div id="studio">
+  <div id="studio" class="hidden">
     <div id="toolbar">
       <div class="tool-section">
         <h3>画 笔 · BRUSHES</h3>
@@ -672,6 +722,7 @@
       <div id="decoBar">
         <div class="desc" id="decoDesc"></div>
         <button class="action-btn" id="btnTrace">🎨 垫入画室临摹</button>
+        <button class="action-btn" id="btnTrace3d">🏛 夹到 3D 画架旁</button>
         <button class="action-btn" id="btnStepSave">💾 下载此图</button>
       </div>
     </div>
@@ -1289,7 +1340,13 @@ const tabStudio = document.getElementById("tabStudio");
 const tabAcademy = document.getElementById("tabAcademy");
 const tabDecompose = document.getElementById("tabDecompose");
 const tabReplay = document.getElementById("tabReplay");
+const atelier3d = document.getElementById("atelier3d");
+const tabAtelier3d = document.getElementById("tabAtelier3d");
 function showView(name){
+  atelier3d.classList.toggle("visible", name==="atelier3d");
+  tabAtelier3d.classList.toggle("active", name==="atelier3d");
+  if(name==="atelier3d") window.__atelier3dShow && window.__atelier3dShow();
+  else window.__atelier3dHide && window.__atelier3dHide();
   studio.classList.toggle("hidden", name!=="studio");
   academy.classList.toggle("visible", name==="academy");
   decompose.classList.toggle("visible", name==="decompose");
@@ -1300,6 +1357,7 @@ function showView(name){
   tabReplay.classList.toggle("active", name==="replay");
 }
 tabStudio.addEventListener("click",()=>showView("studio"));
+tabAtelier3d.addEventListener("click",()=>showView("atelier3d"));
 tabAcademy.addEventListener("click",()=>showView("academy"));
 tabDecompose.addEventListener("click",()=>showView("decompose"));
 tabReplay.addEventListener("click",()=>showView("replay"));
@@ -1587,6 +1645,11 @@ document.getElementById("btnTrace").addEventListener("click",()=>{
   traceOverlay.style.display = "block";
   traceSection.style.display = "block";
   showView("studio");
+});
+document.getElementById("btnTrace3d").addEventListener("click",()=>{
+  if(decoActive<0) return;
+  window.__atelier3dSetReference && window.__atelier3dSetReference(decoSteps[decoActive].url);
+  showView("atelier3d");
 });
 document.getElementById("btnStepSave").addEventListener("click",()=>{
   if(decoActive<0) return;
@@ -2098,5 +2161,22 @@ document.getElementById("btnTraceRemove").addEventListener("click",()=>{
   });
 })();
 </script>
+<!-- 3D 画室：Three.js 以 ES 模块从 CDN 载入，交给 studio3d.js -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+window.THREE3D = { THREE, OrbitControls, RoomEnvironment, RectAreaLightUniformsLib };
+window.dispatchEvent(new Event("three-ready"));
+</script>
+<script src="studio3d.js"></script>
+<script>showView("atelier3d");</script>
 </body>
 </html>
